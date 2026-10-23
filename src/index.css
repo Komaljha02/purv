@@ -2,6 +2,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* ========================================
+   PURV — GLOBAL DESIGN SYSTEM
+======================================== */
+
 :root {
   font-family: 'DM Sans', sans-serif;
   color: #29201f;
@@ -20,27 +24,55 @@
   --purv-ink: #29201f;
   --purv-muted: #82736f;
   --purv-border: #f0e3d9;
+
+  --purv-page-width: 1500px;
+  --purv-page-gutter: 24px;
 }
 
-* {
+/* ========================================
+   RESET & BASE LAYOUT
+======================================== */
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
+  min-width: 320px;
   scroll-behavior: smooth;
-  scroll-padding-top: 150px;
+
+  /* Prevent anchor navigation from leaving an oversized gap */
+  scroll-padding-top: 16px;
 }
 
 body {
   margin: 0;
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
+
   font-family: 'DM Sans', sans-serif;
+  color: var(--purv-ink);
+
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(237, 155, 40, 0.055), transparent 30%),
+    radial-gradient(
+      ellipse at 0% 0%,
+      rgba(237, 155, 40, 0.055),
+      transparent 30%
+    ),
     var(--purv-cream);
 }
 
+/* Prevent the React root from introducing layout spacing */
+#root {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Keep form controls consistent */
 button,
 input,
 textarea,
@@ -56,6 +88,17 @@ button:disabled {
   cursor: not-allowed;
 }
 
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Typography */
 h1,
 h2,
 h3,
@@ -65,18 +108,29 @@ h4,
   letter-spacing: -0.035em;
 }
 
+p {
+  overflow-wrap: break-word;
+}
+
 a {
   color: inherit;
   text-decoration: none;
 }
 
-img {
+img,
+svg,
+video,
+canvas {
   display: block;
+}
+
+img {
   max-width: 100%;
 }
 
+/* Accessible selection and focus */
 ::selection {
-  color: white;
+  color: #fff;
   background: var(--purv-wine);
 }
 
@@ -85,19 +139,33 @@ img {
   outline-offset: 3px;
 }
 
+/* ========================================
+   PURV BRAND UTILITIES
+======================================== */
+
 .purv-gradient {
-  background: linear-gradient(135deg, #421521 0%, #76233a 52%, #b44a48 100%);
+  background: linear-gradient(
+    135deg,
+    #421521 0%,
+    #76233a 52%,
+    #b44a48 100%
+  );
 }
 
 .purv-gradient-text {
-  background: linear-gradient(100deg, #76233a, #d36a3f 70%, #ed9b28);
+  background: linear-gradient(
+    100deg,
+    #76233a,
+    #d36a3f 70%,
+    #ed9b28
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .purv-glass {
-  background: rgba(255, 250, 245, 0.82);
+  background: rgba(255, 250, 245, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 12px 40px rgba(66, 21, 33, 0.08);
   backdrop-filter: blur(18px);
@@ -106,7 +174,7 @@ img {
 .purv-card {
   border: 1px solid var(--purv-border);
   border-radius: 24px;
-  background: white;
+  background: #fff;
   box-shadow: 0 5px 20px rgba(66, 21, 33, 0.035);
   transition:
     transform 220ms ease,
@@ -129,10 +197,12 @@ img {
   border-radius: 999px;
   background: linear-gradient(120deg, #76233a, #a73746);
   padding: 13px 24px;
-  color: white;
+  color: #fff;
   font-weight: 700;
   box-shadow: 0 7px 18px rgba(118, 35, 58, 0.2);
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .purv-button:hover {
@@ -163,11 +233,42 @@ img {
   color: var(--purv-muted);
 }
 
+/* ========================================
+   PAGE LAYOUT HELPERS
+======================================== */
+
+.purv-container {
+  width: min(
+    calc(100% - (var(--purv-page-gutter) * 2)),
+    var(--purv-page-width)
+  );
+  margin-inline: auto;
+}
+
+.purv-page {
+  min-height: 100vh;
+  margin: 0;
+  padding-block: 24px 56px;
+}
+
+.purv-section {
+  margin-block: 32px;
+}
+
+.purv-section:first-child {
+  margin-top: 0;
+}
+
+/* ========================================
+   ANIMATIONS
+======================================== */
+
 @keyframes purv-fade-up {
   from {
     opacity: 0;
     transform: translateY(18px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -175,9 +276,11 @@ img {
 }
 
 @keyframes purv-soft-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-8px);
   }
@@ -191,6 +294,48 @@ img {
   animation: purv-soft-float 4s ease-in-out infinite;
 }
 
+/* ========================================
+   RESPONSIVE LAYOUT
+======================================== */
+
+@media (max-width: 768px) {
+  :root {
+    --purv-page-gutter: 16px;
+  }
+
+  .purv-page {
+    padding-block: 18px 40px;
+  }
+
+  .purv-section {
+    margin-block: 24px;
+  }
+
+  .purv-card {
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --purv-page-gutter: 12px;
+  }
+
+  .purv-page {
+    padding-block: 14px 32px;
+  }
+
+  .purv-section {
+    margin-block: 20px;
+  }
+
+  .purv-button {
+    gap: 7px;
+    padding: 11px 18px;
+  }
+}
+
+/* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

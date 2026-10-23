@@ -180,12 +180,12 @@ export default function CategoryProducts() {
     <div className="min-h-screen overflow-x-clip bg-[#fffaf5] text-[#29201f]">
       <Header />
 
-      <main className="min-h-screen pb-14 pt-36 sm:pt-40">
+      <main className="min-h-screen bg-[#fffaf4] px-4 py-5 md:px-8">
         {/* Breadcrumb */}
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
           <Link
             to="/categories"
-            className="inline-flex items-center gap-2 text-xs font-bold text-[#81716e] transition hover:text-[#76233a] sm:text-sm"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-[#8b3a2b]"
           >
             <ArrowLeft size={15} />
             All collections

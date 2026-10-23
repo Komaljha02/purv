@@ -146,7 +146,7 @@ export default function GiftFinder() {
     <>
       <Header />
 
-      <main className="min-h-screen bg-[#fffaf4] px-4 pb-20 pt-36 sm:px-6 sm:pt-40 lg:px-10">
+      <main className="min-h-screen bg-[#fffaf5] px-4 py-6 sm:px-6 md:px-8">
         <div className="mx-auto max-w-7xl">
           <Link
             to="/"

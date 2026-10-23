@@ -41,6 +41,7 @@ export default function Header() {
     { label: "Pooja essentials", path: "/category/pooja-items" },
     { label: "Festive decor", path: "/category/diwali-decor" },
     { label: "Gift hampers", path: "/category/gift-hampers" },
+    { label: "Contact Us", path: "/contact" },
   ];
 
   const addressLabel = savedAddress
@@ -87,7 +88,7 @@ export default function Header() {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-50">
+      <div className="sticky top-0 z-50 w-full bg-white">
         {/* FESTIVE ANNOUNCEMENT */}
         <div className="relative overflow-hidden bg-[#421521] text-[#fff4df]">
           <div className="pointer-events-none absolute -left-6 -top-10 h-24 w-24 rounded-full border border-[#f6c86c]/20" />

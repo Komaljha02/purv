@@ -15,6 +15,7 @@ import Orders from "./pages/Orders";
 import OrderTracking from "./pages/OrderTracking";
 import Profile from "./pages/Profile";
 import GiftFinder from "./pages/GiftFinder";
+import Contact from "./pages/Contact";
 
 function ComingSoon({ title }) {
   return (
@@ -61,7 +62,7 @@ export default function App() {
           <Route path="/orders/:id" element={<OrderTracking />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/gift-finder" element={<GiftFinder />} />
-
+          <Route path="/contact" element={<Contact />} />
           <Route
             path="/admin"
             element={<ComingSoon title="Admin dashboard" />}
