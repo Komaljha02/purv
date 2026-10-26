@@ -1,603 +1,873 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
   ChevronDown,
-  Filter,
-  Heart,
-  RotateCcw,
+  ChevronRight,
   Search,
-  ShoppingBag,
   SlidersHorizontal,
   Sparkles,
   X,
 } from "lucide-react";
 
-import Header from "../components/Header";
-import ProductCard from "../components/ProductCard";
+import { supabase } from "../lib/supabase";
 import { categories } from "../data/categories";
-import { products } from "../data/products";
+import ProductCard from "../components/ProductCard";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
-const priceRanges = [
-  { label: "All prices", value: "all" },
-  { label: "Under ₹299", value: "299" },
-  { label: "₹300–₹599", value: "599" },
-  { label: "₹600–₹999", value: "999" },
-  { label: "₹1,000+", value: "1000+" },
-];
+/* =========================================
+   CATEGORY CONFIGURATION
+========================================= */
+
+const categoryConfig = {
+  haircare: {
+    subtitle: "Love every strand.",
+    description: "Find your perfect haircare routine.",
+    editTitle: "The haircare edit",
+    badge: "Healthy hair, happy you",
+    subcategories: [
+      "All Haircare",
+      "Shampoo",
+      "Conditioner",
+      "Hair Serum",
+      "Hair Oil",
+      "Hair Masks",
+      "Hair Styling",
+    ],
+  },
+
+  skincare: {
+    subtitle: "A little care, every day.",
+    description: "Discover essentials for your daily skincare ritual.",
+    editTitle: "The skincare edit",
+    badge: "Glowing skin, always",
+    subcategories: [
+      "All Skincare",
+      "Face Wash",
+      "Moisturizers",
+      "Serums",
+      "Sunscreen",
+      "Face Masks",
+      "Toners",
+    ],
+  },
+
+  makeup: {
+    subtitle: "Your everyday beauty edit.",
+    description: "Your favourite beauty essentials, all in one place.",
+    editTitle: "The makeup edit",
+    badge: "Beauty in every detail",
+    subcategories: [
+      "All Makeup",
+      "Face Makeup",
+      "Lipsticks",
+      "Eye Makeup",
+      "Foundation & Concealer",
+      "Blush & Highlighter",
+      "Makeup Brushes",
+    ],
+  },
+
+  jewellery: {
+    subtitle: "Little golden details.",
+    description: "Discover beautiful finishing touches for every look.",
+    editTitle: "The jewellery edit",
+    badge: "Made for your moments",
+    subcategories: [
+      "All Jewellery",
+      "Earrings",
+      "Necklaces",
+      "Neckpieces",
+      "Bangles",
+      "Rings",
+      "Bracelets",
+      "Jewellery Sets",
+    ],
+  },
+
+  "diwali-decor": {
+    subtitle: "Bring home the festive glow.",
+    description: "Make every corner feel a little more magical.",
+    editTitle: "The Diwali décor edit",
+    badge: "Light up your home",
+    subcategories: [
+      "All Diwali Décor",
+      "Diyas",
+      "Decorative Lights",
+      "Rangoli",
+      "Torans",
+      "Candles",
+      "Home Decoration",
+    ],
+  },
+
+  "gift-hampers": {
+    subtitle: "Thoughtful gifts, beautifully wrapped.",
+    description: "Find something special for someone special.",
+    editTitle: "The gift hampers edit",
+    badge: "Give a little happiness",
+    subcategories: [
+      "All Gift Hampers",
+      "Beauty Hampers",
+      "Festive Hampers",
+      "Jewellery Gifts",
+      "Personalized Gifts",
+      "Gifts for Her",
+      "Gifts for Him",
+    ],
+  },
+
+  "pooja-items": {
+    subtitle: "Traditions made beautiful.",
+    description: "Thoughtful essentials for your sacred rituals.",
+    editTitle: "The pooja essentials edit",
+    badge: "Celebrate every ritual",
+    subcategories: [
+      "All Pooja Essentials",
+      "Pooja Thalis",
+      "Diyas",
+      "Incense & Dhoop",
+      "Pooja Accessories",
+      "Pooja Decoration",
+      "Festive Pooja Sets",
+    ],
+  },
+
+  rakhi: {
+    subtitle: "Little threads, endless love.",
+    description: "Celebrate the beautiful bond between siblings.",
+    editTitle: "The Rakhi edit",
+    badge: "Made with love",
+    subcategories: [
+      "All Rakhi",
+      "Traditional Rakhi",
+      "Designer Rakhi",
+      "Kids Rakhi",
+      "Rakhi Sets",
+      "Rakhi Hampers",
+      "Rakhi Gifts",
+    ],
+  },
+
+  fragrances: {
+    subtitle: "Leave a little magic behind.",
+    description: "Discover fragrances for every mood and moment.",
+    editTitle: "The fragrance edit",
+    badge: "Find your signature scent",
+    subcategories: [
+      "All Fragrances",
+      "Perfumes",
+      "Body Mists",
+      "Attars",
+      "Roll-On Fragrances",
+      "Gift Sets",
+    ],
+  },
+
+  "bath-body": {
+    subtitle: "Make everyday feel special.",
+    description: "Small self-care rituals, big feel-good moments.",
+    editTitle: "The bath & body edit",
+    badge: "Your daily dose of care",
+    subcategories: [
+      "All Bath & Body",
+      "Body Wash",
+      "Body Lotion",
+      "Body Scrubs",
+      "Hand & Foot Care",
+      "Bath Essentials",
+    ],
+  },
+
+  "nail-studio": {
+    subtitle: "A little colour goes a long way.",
+    description: "Find your next favourite nail look.",
+    editTitle: "The nail studio edit",
+    badge: "Colour your world",
+    subcategories: [
+      "All Nail Studio",
+      "Nail Polish",
+      "Nail Art",
+      "Nail Care",
+      "Nail Extensions",
+      "Nail Tools",
+    ],
+  },
+
+  "ethnic-accessories": {
+    subtitle: "Celebrate your own kind of beautiful.",
+    description: "Finishing touches for your favourite ethnic looks.",
+    editTitle: "The ethnic accessories edit",
+    badge: "Tradition meets style",
+    subcategories: [
+      "All Ethnic Accessories",
+      "Bangles",
+      "Bindis",
+      "Hair Accessories",
+      "Dupatta Accessories",
+      "Traditional Jewellery",
+    ],
+  },
+};
+
+/* =========================================
+   HELPERS
+========================================= */
+
+function toSlug(value = "") {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function formatPrice(value) {
+  return Number(value || 0);
+}
+
+/* =========================================
+   CATEGORY SIDEBAR
+========================================= */
+
+function CategorySidebar({
+  category,
+  config,
+  selectedSubcategory,
+  onSelect,
+}) {
+  const subcategories = config.subcategories;
+
+  return (
+    <aside className="hidden w-[205px] shrink-0 lg:block">
+      <div className="sticky top-[150px] rounded-2xl border border-[#f0e3d9] bg-white p-3">
+        <Link
+          to="/categories"
+          className="mb-4 flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-[#8b3026] transition hover:bg-[#fff4ee]"
+        >
+          <ArrowLeft size={14} />
+          All Categories
+        </Link>
+
+        <div className="mb-3 flex items-center gap-2 px-2">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#f8e8e5] text-[#76233a]">
+            <Sparkles size={16} />
+          </span>
+
+          <h2 className="text-sm font-bold text-[#421521]">
+            {category.name}
+          </h2>
+        </div>
+
+        <div className="space-y-1">
+          {subcategories.map((subcategory, index) => {
+            const subcategorySlug =
+              index === 0
+                ? "all"
+                : toSlug(subcategory);
+
+            const isSelected =
+              selectedSubcategory === subcategorySlug;
+
+            return (
+              <button
+                key={subcategory}
+                type="button"
+                onClick={() => onSelect(subcategorySlug)}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs transition duration-200 ${
+                  isSelected
+                    ? "bg-[#fbe9ec] font-bold text-[#8b3026]"
+                    : "text-[#79665d] hover:bg-[#fff6f0] hover:text-[#76233a]"
+                }`}
+              >
+                <span className="min-w-0">{subcategory}</span>
+
+                {isSelected && (
+                  <ChevronRight
+                    size={14}
+                    className="shrink-0"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 rounded-xl bg-[#fff7ec] p-3">
+          <p className="text-xs font-bold text-[#7c3828]">
+            A little something special
+          </p>
+
+          <p className="mt-1 text-[10px] leading-5 text-[#987c6a]">
+            Explore thoughtfully selected finds from Purv.
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* =========================================
+   CATEGORY HERO BANNER
+========================================= */
+
+function CategoryHero({ category, config, image, productCount }) {
+  return (
+    <section className="purv-content-enter relative isolate mb-6 min-h-[150px] overflow-hidden rounded-[22px] bg-gradient-to-r from-[#421521] via-[#76233a] to-[#b15b5b] sm:min-h-[172px]">
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full border border-white/10 sm:h-64 sm:w-64" />
+
+      <div className="pointer-events-none absolute -right-4 -bottom-24 h-44 w-44 rounded-full bg-white/[0.06] sm:h-60 sm:w-60" />
+
+      {/* Text */}
+      <div className="relative z-10 flex min-h-[150px] items-center sm:min-h-[172px]">
+        <div className="max-w-[68%] px-5 py-5 sm:max-w-[62%] sm:px-8 sm:py-6">
+          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#f7d4b4] sm:text-[10px]">
+            The Purv Collection
+          </p>
+
+          <h1 className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-white sm:text-3xl lg:text-[38px]">
+            {category.name}.
+          </h1>
+
+          <p className="mt-1 text-xs text-white/85 sm:text-sm">
+            {config.subtitle}
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[9px] font-medium text-white/95 sm:text-[10px]">
+              {productCount} products in this collection
+            </span>
+
+            <span className="hidden items-center gap-1.5 text-[9px] text-white/80 sm:inline-flex sm:text-[10px]">
+              <Sparkles size={12} />
+              Curated with care
+            </span>
+          </div>
+        </div>
+
+        {/* Category image */}
+        {image && (
+          <div className="absolute inset-y-0 right-0 w-[35%] overflow-hidden sm:w-[37%]">
+            <img
+              src={image}
+              alt={category.name}
+              className="h-full w-full object-cover object-center"
+            />
+
+            <div className="absolute inset-0 bg-gradient-to-r from-[#76233a] via-[#76233a]/30 to-transparent" />
+
+            <div className="absolute bottom-3 right-3 hidden max-w-[150px] rounded-xl border border-white/70 bg-white/95 px-3 py-2 shadow-lg sm:block">
+              <p className="text-[9px] font-bold text-[#76233a]">
+                DISCOVER SOMETHING LOVELY
+              </p>
+
+              <p className="mt-0.5 text-[10px] text-stone-600">
+                {config.badge}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* =========================================
+   CATEGORY PRODUCTS PAGE
+========================================= */
 
 export default function CategoryProducts() {
   const { slug } = useParams();
 
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [selectedSubcategory, setSelectedSubcategory] =
+    useState("all");
+
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("recommended");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState("all");
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const category = categories.find((item) => item.slug === slug);
+  const category = categories.find(
+    (item) => item.slug === slug,
+  );
 
-  const categoryProducts = useMemo(() => {
-    let filtered = products.filter(
-      (product) => product.categorySlug === slug
-    );
-
-    const query = searchQuery.trim().toLowerCase();
-
-    if (query) {
-      filtered = filtered.filter((product) =>
-        [
-          product.name,
-          product.category,
-          product.description,
-          ...(Array.isArray(product.tags) ? product.tags : []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(query)
-      );
-    }
-
-    if (priceRange === "299") {
-      filtered = filtered.filter(
-        (product) => Number(product.price) < 300
-      );
-    } else if (priceRange === "599") {
-      filtered = filtered.filter(
-        (product) =>
-          Number(product.price) >= 300 &&
-          Number(product.price) <= 599
-      );
-    } else if (priceRange === "999") {
-      filtered = filtered.filter(
-        (product) =>
-          Number(product.price) >= 600 &&
-          Number(product.price) <= 999
-      );
-    } else if (priceRange === "1000+") {
-      filtered = filtered.filter(
-        (product) => Number(product.price) >= 1000
-      );
-    }
-
-    if (inStockOnly) {
-      filtered = filtered.filter(
-        (product) => Number(product.stock ?? 0) > 0
-      );
-    }
-
-    switch (sortBy) {
-      case "price-low":
-        filtered.sort(
-          (a, b) => Number(a.price) - Number(b.price)
-        );
-        break;
-
-      case "price-high":
-        filtered.sort(
-          (a, b) => Number(b.price) - Number(a.price)
-        );
-        break;
-
-      case "discount":
-        filtered.sort((a, b) => {
-          const discountA =
-            Number(a.originalPrice) > 0
-              ? (Number(a.originalPrice) - Number(a.price)) /
-                Number(a.originalPrice)
-              : 0;
-
-          const discountB =
-            Number(b.originalPrice) > 0
-              ? (Number(b.originalPrice) - Number(b.price)) /
-                Number(b.originalPrice)
-              : 0;
-
-          return discountB - discountA;
-        });
-        break;
-
-      case "rating":
-        filtered.sort(
-          (a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0)
-        );
-        break;
-
-      default:
-        break;
-    }
-
-    return filtered;
-  }, [slug, searchQuery, priceRange, inStockOnly, sortBy]);
-
-  const resetFilters = () => {
-    setSearchQuery("");
-    setPriceRange("all");
-    setInStockOnly(false);
-    setSortBy("recommended");
+  const config = categoryConfig[slug] || {
+    subtitle: "Discover something beautiful.",
+    description: "Explore our thoughtfully selected collection.",
+    editTitle: `The ${category?.name || "collection"} edit`,
+    badge: "Selected with care",
+    subcategories: [
+      `All ${category?.name || "Products"}`,
+    ],
   };
 
-  const hasActiveFilters =
-    searchQuery.trim() !== "" ||
-    priceRange !== "all" ||
-    inStockOnly;
+  /* Reset filters when the main category changes */
+  useEffect(() => {
+    setSelectedSubcategory("all");
+    setSearch("");
+    setSortBy("recommended");
+  }, [slug]);
+
+  /* Load products from Supabase */
+  useEffect(() => {
+    let active = true;
+
+    async function loadProducts() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const { data, error: queryError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("category_slug", slug)
+          .order("created_at", { ascending: false });
+
+        if (queryError) {
+          throw queryError;
+        }
+
+        if (active) {
+          const formattedProducts = (data || []).map(
+            (product) => ({
+              ...product,
+              categorySlug: product.category_slug,
+              originalPrice: product.original_price,
+              image: product.image_url,
+
+              // Supports either subcategory column name.
+              subcategorySlug:
+                product.subcategory_slug ||
+                toSlug(product.subcategory || ""),
+            }),
+          );
+
+          setProducts(formattedProducts);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err.message || "Unable to load products.",
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    if (slug) {
+      loadProducts();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
+  /* Search, filter and sort */
+  const visibleProducts = useMemo(() => {
+    let result = [...products];
+
+    if (selectedSubcategory !== "all") {
+      result = result.filter((product) => {
+        const productSubcategory =
+          product.subcategorySlug ||
+          toSlug(product.subcategory || "");
+
+        return productSubcategory === selectedSubcategory;
+      });
+    }
+
+    if (search.trim()) {
+      const query = search.toLowerCase().trim();
+
+      result = result.filter((product) =>
+        [
+          product.name,
+          product.description,
+          product.category,
+          product.subcategory,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(query),
+          ),
+      );
+    }
+
+    if (sortBy === "price-low") {
+      result.sort(
+        (a, b) =>
+          formatPrice(a.price) - formatPrice(b.price),
+      );
+    }
+
+    if (sortBy === "price-high") {
+      result.sort(
+        (a, b) =>
+          formatPrice(b.price) - formatPrice(a.price),
+      );
+    }
+
+    if (sortBy === "newest") {
+      result.sort(
+        (a, b) =>
+          new Date(b.created_at || 0) -
+          new Date(a.created_at || 0),
+      );
+    }
+
+    return result;
+  }, [products, selectedSubcategory, search, sortBy]);
+
+  const categoryImage =
+    category?.image ||
+    products.find((product) => product.image)?.image ||
+    "";
+
+  const selectedLabel =
+    config.subcategories.find(
+      (item, index) =>
+        (index === 0 ? "all" : toSlug(item)) ===
+        selectedSubcategory,
+    ) || category?.name;
 
   if (!category) {
     return (
       <>
         <Header />
 
-        <main className="flex min-h-[65vh] flex-col items-center justify-center bg-[#fffaf5] px-5 pt-40 text-center">
-          <div className="grid h-20 w-20 place-items-center rounded-[28px] bg-[#f8e8e5] text-[#76233a]">
-            <ShoppingBag size={34} />
-          </div>
-
-          <h1 className="mt-5 font-serif text-3xl font-bold text-[#421521]">
+        <main className="min-h-[60vh] bg-[#fffaf5] px-5 py-16 text-center">
+          <h1 className="text-2xl font-bold text-[#421521]">
             Category not found
           </h1>
 
-          <p className="mt-2 max-w-sm text-sm leading-6 text-[#81716e]">
-            This collection may have moved. Explore our other
-            collections to find something lovely.
+          <p className="mt-2 text-sm text-stone-500">
+            This collection may have moved.
           </p>
 
           <Link
             to="/categories"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#421521]"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#421521]"
           >
-            Browse categories
+            Browse all categories
             <ArrowRight size={16} />
           </Link>
         </main>
+
+        <Footer />
       </>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#fffaf5] text-[#29201f]">
+    <div className="min-h-screen bg-[#fffaf6]">
+      {/* Keeps the shared header visible on category pages */}
       <Header />
 
-      <main className="min-h-screen bg-[#fffaf4] px-4 py-5 md:px-8">
+      <main className="purv-page-enter mx-auto max-w-[1500px] px-3 pb-10 pt-5 sm:px-5 lg:px-8">
         {/* Breadcrumb */}
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-4 flex items-center gap-1.5 overflow-hidden text-[11px] text-stone-500"
+        >
           <Link
-            to="/categories"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-[#8b3a2b]"
+            to="/"
+            className="shrink-0 transition hover:text-[#76233a]"
           >
-            <ArrowLeft size={15} />
-            All collections
+            Home
           </Link>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-[#958580] sm:text-xs">
-            <Link to="/" className="hover:text-[#76233a]">
-              Home
-            </Link>
-            <span>/</span>
-            <Link
-              to="/categories"
-              className="hover:text-[#76233a]"
-            >
-              Categories
-            </Link>
-            <span>/</span>
-            <span className="font-bold text-[#421521]">
-              {category.name}
-            </span>
-          </div>
-        </div>
+          <ChevronRight size={13} className="shrink-0" />
 
-        {/* Category hero */}
-        <section className="mx-auto max-w-[1440px] px-3 pt-5 sm:px-6 sm:pt-7 lg:px-8">
-          <div className="relative isolate overflow-hidden rounded-[26px] bg-[#421521] sm:rounded-[34px]">
-            <div className="absolute -left-16 -top-24 -z-10 h-64 w-64 rounded-full border border-[#f5c66f]/20 sm:h-80 sm:w-80" />
-            <div className="absolute -bottom-28 left-1/3 -z-10 h-64 w-64 rounded-full bg-[#a34852]/35 blur-3xl" />
-            <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#421521] via-[#76233a] to-[#9b4149]" />
+          <Link
+            to="/categories"
+            className="shrink-0 transition hover:text-[#76233a]"
+          >
+            Categories
+          </Link>
 
-            <div className="grid min-h-[260px] items-stretch sm:grid-cols-[1fr_260px] md:grid-cols-[1fr_340px] lg:min-h-[320px]">
-              <div className="flex flex-col items-start justify-center px-6 py-8 sm:px-8 md:px-10 lg:px-14">
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#f5c66f]/30 bg-white/[0.08] px-3 py-2 text-[9px] font-extrabold uppercase tracking-[2px] text-[#f5c66f] sm:text-[10px]">
-                  <Sparkles size={13} />
-                  The Purv collection
+          <ChevronRight size={13} className="shrink-0" />
+
+          <span className="truncate font-semibold text-[#76233a]">
+            {category.name}
+          </span>
+        </nav>
+
+        {/* Main layout */}
+        <div className="flex items-start gap-5 xl:gap-7">
+          {/* Left sidebar */}
+          <CategorySidebar
+            category={category}
+            config={config}
+            selectedSubcategory={selectedSubcategory}
+            onSelect={setSelectedSubcategory}
+          />
+
+          {/* Main collection */}
+          <div className="min-w-0 flex-1">
+            {/* Compact banner */}
+            <CategoryHero
+              category={category}
+              config={config}
+              image={categoryImage}
+              productCount={products.length}
+            />
+
+            {/* Mobile subcategory navigation */}
+            <section className="mb-6 lg:hidden">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-[#421521]">
+                  Explore {category.name}
+                </h2>
+
+                <span className="text-[10px] text-stone-500">
+                  {config.subcategories.length} collections
                 </span>
-
-                <h1 className="mt-4 font-serif text-3xl font-bold leading-tight text-[#fffaf5] sm:text-4xl lg:text-5xl">
-                  {category.name}
-                  <span className="ml-2 text-[#f5c66f]">.</span>
-                </h1>
-
-                <p className="mt-3 max-w-xl text-xs leading-6 text-white/75 sm:text-sm sm:leading-7">
-                  {category.description ||
-                    `Discover handpicked favourites from our ${category.name} collection, chosen to make your everyday moments and special celebrations feel beautiful.`}
-                </p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-white/10 px-3 py-2 text-[10px] font-bold text-white sm:text-xs">
-                    {products.filter(
-                      (product) => product.categorySlug === slug
-                    ).length}{" "}
-                    products in this collection
-                  </span>
-
-                  <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#f5d8b1] sm:text-xs">
-                    <Sparkles size={13} />
-                    Curated with care
-                  </span>
-                </div>
               </div>
 
-              <div className="relative hidden min-h-full overflow-hidden sm:block">
-                {category.image ? (
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#e8b77e] to-[#b85c58]" />
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {config.subcategories.map(
+                  (subcategory, index) => {
+                    const subcategorySlug =
+                      index === 0
+                        ? "all"
+                        : toSlug(subcategory);
+
+                    const isSelected =
+                      selectedSubcategory ===
+                      subcategorySlug;
+
+                    return (
+                      <button
+                        key={subcategory}
+                        type="button"
+                        onClick={() =>
+                          setSelectedSubcategory(
+                            subcategorySlug,
+                          )
+                        }
+                        className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2.5 text-xs font-semibold transition ${
+                          isSelected
+                            ? "border-[#76233a] bg-[#76233a] text-white"
+                            : "border-[#eee1d7] bg-white text-[#705a50] hover:border-[#d8b3a7]"
+                        }`}
+                      >
+                        {subcategory}
+                      </button>
+                    );
+                  },
                 )}
+              </div>
+            </section>
 
-                <div className="absolute inset-0 bg-gradient-to-r from-[#76233a]/65 via-[#76233a]/10 to-transparent" />
-
-                <div className="absolute bottom-5 right-5 rounded-2xl border border-white/30 bg-white/90 px-4 py-3 shadow-xl backdrop-blur-md">
-                  <p className="text-[9px] font-extrabold uppercase tracking-[1.5px] text-[#a34852]">
-                    Discover something
+            {/* Collection heading */}
+            <section className="mb-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#b15b43]">
+                    Find your favourites
                   </p>
-                  <p className="mt-1 text-sm font-bold text-[#421521]">
-                    Made for your moments
+
+                  <h2 className="mt-1 text-xl font-bold text-[#421521] sm:text-2xl">
+                    {selectedSubcategory === "all"
+                      ? config.editTitle
+                      : selectedLabel}
+                  </h2>
+
+                  <p className="mt-1 text-xs text-stone-500">
+                    {loading
+                      ? "Finding products for you..."
+                      : `${visibleProducts.length} ${
+                          visibleProducts.length === 1
+                            ? "item"
+                            : "items"
+                        } ready to explore`}
                   </p>
                 </div>
+
+                {selectedSubcategory !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedSubcategory("all")
+                    }
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8b3026] transition hover:text-[#421521]"
+                  >
+                    <X size={14} />
+                    Clear filter
+                  </button>
+                )}
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        {/* Shopping controls */}
-        <section className="mx-auto max-w-[1440px] px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
-            <div>
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[2px] text-[#b45a36]">
-                Find your favourite
-              </p>
-
-              <h2 className="font-serif text-2xl font-bold text-[#421521] sm:text-3xl">
-                The collection edit
-              </h2>
-
-              <p className="mt-2 text-xs text-[#81716e] sm:text-sm">
-                {categoryProducts.length}{" "}
-                {categoryProducts.length === 1 ? "item" : "items"}
-                {searchQuery.trim()
-                  ? ` matching "${searchQuery.trim()}"`
-                  : " ready to explore"}
-              </p>
-            </div>
-
-            <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-              {/* Search */}
-              <label className="flex min-h-11 flex-1 items-center gap-2 rounded-full border border-[#eadbd3] bg-white px-4 transition focus-within:border-[#b45a67] focus-within:ring-2 focus-within:ring-[#76233a]/10 md:w-64 md:flex-none">
-                <Search size={16} className="shrink-0 text-[#9b8580]" />
+            {/* Search and sorting */}
+            <section className="mb-5 flex flex-col gap-3 sm:flex-row">
+              <form
+                onSubmit={(event) => event.preventDefault()}
+                className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#eee1d7] bg-white px-3 transition focus-within:border-[#c79a8b] focus-within:shadow-sm"
+              >
+                <Search
+                  size={17}
+                  className="shrink-0 text-stone-400"
+                />
 
                 <input
                   type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
                   placeholder={`Search ${category.name.toLowerCase()}...`}
                   aria-label={`Search ${category.name}`}
-                  className="min-w-0 flex-1 bg-transparent text-xs text-[#421521] outline-none placeholder:text-[#a69893] sm:text-sm"
+                  className="h-full w-full min-w-0 border-0 bg-transparent text-xs outline-none placeholder:text-stone-400 focus:ring-0 sm:text-sm"
                 />
 
-                {searchQuery && (
+                {search && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => setSearch("")}
                     aria-label="Clear search"
-                    className="text-[#958580] hover:text-[#76233a]"
+                    className="rounded-full p-1 text-stone-400 hover:bg-stone-100"
                   >
                     <X size={15} />
                   </button>
                 )}
-              </label>
+              </form>
 
-              {/* Sort */}
-              <label className="flex min-h-11 items-center gap-2 rounded-full border border-[#eadbd3] bg-white px-4 text-xs text-[#81716e] sm:text-sm">
-                <SlidersHorizontal size={15} />
+              <label className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#eee1d7] bg-white px-3 text-xs text-stone-600 sm:min-w-[180px]">
+                <SlidersHorizontal
+                  size={15}
+                  className="text-[#8b3026]"
+                />
 
-                <span className="whitespace-nowrap">Sort:</span>
+                <span className="whitespace-nowrap">
+                  Sort by
+                </span>
 
                 <select
                   value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value)}
-                  className="min-w-0 flex-1 cursor-pointer bg-transparent font-bold text-[#421521] outline-none sm:flex-none"
+                  onChange={(event) =>
+                    setSortBy(event.target.value)
+                  }
                   aria-label="Sort products"
+                  className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent text-xs font-semibold text-[#421521] outline-none focus:ring-0"
                 >
-                  <option value="recommended">Recommended</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="discount">Biggest Discount</option>
-                  <option value="rating">Top Rated</option>
+                  <option value="recommended">
+                    Recommended
+                  </option>
+                  <option value="newest">
+                    Newest first
+                  </option>
+                  <option value="price-low">
+                    Price: Low to High
+                  </option>
+                  <option value="price-high">
+                    Price: High to Low
+                  </option>
                 </select>
 
-                <ChevronDown size={14} />
-              </label>
-            </div>
-          </div>
-
-          {/* Filter row */}
-          <div className="mt-5 rounded-[22px] border border-[#f0e3dc] bg-white p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f8e8e5] text-[#76233a]">
-                  <Filter size={15} />
-                </div>
-
-                <span className="text-xs font-extrabold text-[#421521] sm:text-sm">
-                  Refine your picks
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((open) => !open)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#eadbd3] px-3 py-2 text-[10px] font-bold text-[#76233a] transition hover:bg-[#fff5f2] sm:text-xs"
-              >
-                {filtersOpen ? "Hide filters" : "More filters"}
                 <ChevronDown
                   size={14}
-                  className={`transition-transform ${
-                    filtersOpen ? "rotate-180" : ""
-                  }`}
+                  className="shrink-0 text-stone-400"
                 />
-              </button>
-            </div>
+              </label>
+            </section>
 
-            <div className="mt-4">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[1.5px] text-[#958580]">
-                Shop by budget
-              </p>
+            {/* Products */}
+            {loading ? (
+              <div
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4"
+                aria-label="Loading products"
+              >
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="animate-pulse overflow-hidden rounded-2xl border border-[#f0e3d9] bg-white p-3"
+                  >
+                    <div className="aspect-square rounded-xl bg-[#f4eae3]" />
 
-              <div className="flex flex-wrap gap-2">
-                {priceRanges.map((range) => {
-                  const selected = priceRange === range.value;
+                    <div className="mt-4 h-3 w-3/4 rounded bg-[#f4eae3]" />
 
-                  return (
-                    <button
-                      key={range.value}
-                      type="button"
-                      onClick={() => setPriceRange(range.value)}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] font-bold transition sm:text-xs ${
-                        selected
-                          ? "border-[#76233a] bg-[#76233a] text-white shadow-sm"
-                          : "border-[#eadbd3] bg-[#fffaf7] text-[#765f5c] hover:border-[#c99ba0] hover:bg-[#fff3ef]"
-                      }`}
-                    >
-                      {selected && <Check size={12} />}
-                      {range.label}
-                    </button>
-                  );
-                })}
+                    <div className="mt-2 h-3 w-1/2 rounded bg-[#f4eae3]" />
+
+                    <div className="mt-4 h-9 rounded-lg bg-[#f4eae3]" />
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : error ? (
+              <div className="rounded-2xl border border-red-100 bg-white px-5 py-12 text-center">
+                <h2 className="text-lg font-bold text-[#421521]">
+                  Unable to load products
+                </h2>
 
-            {filtersOpen && (
-              <div className="mt-4 border-t border-[#f0e3dc] pt-4">
-                <label className="flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={inStockOnly}
-                    onChange={(event) =>
-                      setInStockOnly(event.target.checked)
-                    }
-                    className="h-4 w-4 accent-[#76233a]"
-                  />
-
-                  <span className="text-xs font-semibold text-[#421521] sm:text-sm">
-                    Show in-stock products only
-                  </span>
-                </label>
-              </div>
-            )}
-
-            {hasActiveFilters && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#f0e3dc] pt-4">
-                <span className="text-[10px] font-bold text-[#958580]">
-                  Active filters:
-                </span>
-
-                {searchQuery.trim() && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#f8e8e5] px-3 py-1.5 text-[10px] font-bold text-[#76233a]">
-                    Search: {searchQuery.trim()}
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      aria-label="Remove search filter"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
-
-                {priceRange !== "all" && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#f8e8e5] px-3 py-1.5 text-[10px] font-bold text-[#76233a]">
-                    {priceRanges.find(
-                      (range) => range.value === priceRange
-                    )?.label}
-                    <button
-                      type="button"
-                      onClick={() => setPriceRange("all")}
-                      aria-label="Remove price filter"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
-
-                {inStockOnly && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#f8e8e5] px-3 py-1.5 text-[10px] font-bold text-[#76233a]">
-                    In stock
-                    <button
-                      type="button"
-                      onClick={() => setInStockOnly(false)}
-                      aria-label="Remove stock filter"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
+                <p className="mt-2 break-words text-sm text-red-600">
+                  {error}
+                </p>
 
                 <button
                   type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#a34852] hover:text-[#421521]"
+                  onClick={() => window.location.reload()}
+                  className="mt-5 rounded-full bg-[#76233a] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-[#421521]"
                 >
-                  <RotateCcw size={12} />
-                  Clear all
+                  Try again
+                </button>
+              </div>
+            ) : visibleProducts.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
+                {visibleProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="purv-stagger-item min-w-0"
+                  >
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-[#f0e3d9] bg-white px-5 py-14 text-center sm:py-16">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#f8e8e5] text-[#76233a]">
+                  <Search size={24} />
+                </div>
+
+                <h2 className="mt-4 text-lg font-bold text-[#421521]">
+                  {search || selectedSubcategory !== "all"
+                    ? "No matching products found"
+                    : "Your collection is coming soon"}
+                </h2>
+
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-500">
+                  {search || selectedSubcategory !== "all"
+                    ? "Try another search or explore the full collection."
+                    : "Products added to this category will appear here."}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedSubcategory("all");
+                  }}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#421521]"
+                >
+                  View all {category.name}
+                  <ArrowRight size={15} />
                 </button>
               </div>
             )}
           </div>
-
-          {/* Product grid */}
-          <div className="mt-7">
-            {categoryProducts.length > 0 ? (
-              <>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <p className="text-[11px] text-[#81716e] sm:text-xs">
-                    Showing{" "}
-                    <span className="font-extrabold text-[#421521]">
-                      {categoryProducts.length}
-                    </span>{" "}
-                    products
-                  </p>
-
-                  {sortBy !== "recommended" && (
-                    <span className="rounded-full bg-[#f8e8e5] px-3 py-1.5 text-[10px] font-bold text-[#76233a]">
-                      Sorted by{" "}
-                      {sortBy === "price-low"
-                        ? "price: low to high"
-                        : sortBy === "price-high"
-                          ? "price: high to low"
-                          : sortBy === "discount"
-                            ? "discount"
-                            : "rating"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5 xl:grid-cols-5">
-                  {categoryProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="rounded-[28px] border border-dashed border-[#e7d2cb] bg-white px-5 py-14 text-center sm:py-20">
-                <div className="mx-auto grid h-20 w-20 place-items-center rounded-[26px] bg-[#f8e8e5] text-[#76233a]">
-                  {searchQuery ? (
-                    <Search size={32} />
-                  ) : (
-                    <ShoppingBag size={32} />
-                  )}
-                </div>
-
-                <h2 className="mt-5 font-serif text-2xl font-bold text-[#421521] sm:text-3xl">
-                  {searchQuery || hasActiveFilters
-                    ? "No matching favourites"
-                    : "Something lovely is on its way"}
-                </h2>
-
-                <p className="mx-auto mt-3 max-w-md text-xs leading-6 text-[#81716e] sm:text-sm">
-                  {searchQuery || hasActiveFilters
-                    ? "Try another search or adjust your filters to discover more products in this collection."
-                    : "We're preparing this collection. Explore our other categories while you wait."}
-                </p>
-
-                {hasActiveFilters ? (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-6 py-3 text-xs font-bold text-white transition hover:bg-[#421521] sm:text-sm"
-                  >
-                    <RotateCcw size={15} />
-                    Clear filters
-                  </button>
-                ) : (
-                  <Link
-                    to="/categories"
-                    className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-6 py-3 text-xs font-bold text-white transition hover:bg-[#421521] sm:text-sm"
-                  >
-                    Explore categories
-                    <ArrowRight size={15} />
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Bottom discovery banner */}
-        <section className="mx-auto max-w-[1440px] px-3 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 rounded-[24px] border border-[#f0ded6] bg-gradient-to-r from-[#fff0e8] to-[#fff8ed] p-5 sm:flex-row sm:items-center sm:rounded-[28px] sm:p-8">
-            <div>
-              <p className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[2px] text-[#a34852]">
-                <Heart size={14} />
-                Still exploring?
-              </p>
-
-              <h2 className="mt-2 font-serif text-xl font-bold text-[#421521] sm:text-2xl">
-                There’s more to discover at Purv.
-              </h2>
-
-              <p className="mt-2 text-xs leading-5 text-[#81716e] sm:text-sm">
-                Find another collection or get help choosing a thoughtful gift.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/categories"
-                className="inline-flex items-center gap-2 rounded-full border border-[#e5c9c1] bg-white px-5 py-3 text-xs font-bold text-[#76233a] transition hover:border-[#76233a]"
-              >
-                All categories
-                <ArrowRight size={14} />
-              </Link>
-
-              <Link
-                to="/gift-finder"
-                className="inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#421521]"
-              >
-                <Sparkles size={14} />
-                Gift Finder
-              </Link>
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

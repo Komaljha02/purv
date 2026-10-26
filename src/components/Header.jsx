@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
@@ -13,17 +12,50 @@ import {
   Sparkles,
   Gift,
   ArrowRight,
-  Clock3,
   Flower2,
+  LocateFixed,
+  Headset,
 } from "lucide-react";
 
 import { useShop } from "../context/ShopContext";
 import { categories } from "../data/categories";
 
+const LOCATION_STORAGE_KEY = "purvDetectedLocation";
+
 export default function Header() {
   const [search, setSearch] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  const searchPlaceholders = [
+    "Search for hair serum...",
+    "Search for gift hampers...",
+    "Search for Diwali décor...",
+    "Search for skincare essentials...",
+    "Search for the perfect gift...",
+    "Search for something special...",
+  ];
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPlaceholderIndex(
+        (previous) => (previous + 1) % searchPlaceholders.length,
+      );
+    }, 1500);
+
+    return () => clearInterval(timer);
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+
+  const [detectedLocation, setDetectedLocation] = useState(() => {
+    try {
+      return localStorage.getItem(LOCATION_STORAGE_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [locationStatus, setLocationStatus] = useState("idle");
+  const [locationError, setLocationError] = useState("");
 
   const navigate = useNavigate();
   const currentLocation = useLocation();
@@ -36,12 +68,10 @@ export default function Header() {
   const navLinks = [
     { label: "Home", path: "/" },
     { label: "Categories", path: "/categories" },
-    { label: "Beauty", path: "/category/makeup" },
-    { label: "Jewellery", path: "/category/jewellery" },
-    { label: "Pooja essentials", path: "/category/pooja-items" },
-    { label: "Festive decor", path: "/category/diwali-decor" },
-    { label: "Gift hampers", path: "/category/gift-hampers" },
-    { label: "Contact Us", path: "/contact" },
+    { label: "Wishlist", path: "/wishlist" },
+    { label: "My Orders", path: "/orders" },
+    { label: "Profile", path: "/profile" },
+    { label: "Delivery Address", path: "/checkout/address" },
   ];
 
   const addressLabel = savedAddress
@@ -53,9 +83,122 @@ export default function Header() {
       ]
         .filter(Boolean)
         .join(", ")
-    : "Add your delivery address";
+    : detectedLocation || "Add your delivery address";
 
-  function handleSearch(event) {
+  const detectLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus("error");
+      setLocationError(
+        "Your browser does not support automatic location detection.",
+      );
+      return;
+    }
+
+    setLocationStatus("loading");
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+
+          const url = new URL("https://nominatim.openstreetmap.org/reverse");
+
+          url.searchParams.set("format", "jsonv2");
+          url.searchParams.set("lat", latitude);
+          url.searchParams.set("lon", longitude);
+          url.searchParams.set("zoom", "16");
+          url.searchParams.set("addressdetails", "1");
+
+          const response = await fetch(url.toString());
+
+          if (!response.ok) {
+            throw new Error("Reverse geocoding request failed.");
+          }
+
+          const data = await response.json();
+          const address = data.address || {};
+
+          const area =
+            address.suburb ||
+            address.neighbourhood ||
+            address.residential ||
+            address.quarter ||
+            address.city_district ||
+            address.village ||
+            address.town ||
+            address.city ||
+            "";
+
+          const city =
+            address.city ||
+            address.town ||
+            address.village ||
+            address.city_district ||
+            address.county ||
+            "";
+
+          const pincode = address.postcode || "";
+
+          const readableLocation =
+            [...new Set([area, city, pincode].filter(Boolean))].join(", ") ||
+            data.display_name ||
+            "";
+
+          if (!readableLocation) {
+            throw new Error("No readable address was returned.");
+          }
+
+          setDetectedLocation(readableLocation);
+          setLocationStatus("success");
+
+          try {
+            localStorage.setItem(LOCATION_STORAGE_KEY, readableLocation);
+          } catch {
+            // Continue if browser storage is unavailable.
+          }
+        } catch {
+          setLocationStatus("error");
+          setLocationError(
+            "We couldn't retrieve your address. Please try again or enter it manually.",
+          );
+        }
+      },
+      (error) => {
+        setLocationStatus("error");
+
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationError(
+            "Location permission was denied. Enable it in your browser settings or enter your address manually.",
+          );
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setLocationError(
+            "Your current location is unavailable. Please try again.",
+          );
+        } else if (error.code === error.TIMEOUT) {
+          setLocationError(
+            "Location detection took too long. Please try again.",
+          );
+        } else {
+          setLocationError(
+            "We couldn't detect your location. Please try again.",
+          );
+        }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 300000,
+      },
+    );
+  }, []);
+
+  // Ask for browser location permission when the header first mounts.
+  useEffect(() => {
+    detectLocation();
+  }, [detectLocation]);
+
+  const handleSearch = (event) => {
     event.preventDefault();
 
     const query = search.trim();
@@ -65,7 +208,7 @@ export default function Header() {
     navigate(`/search?q=${encodeURIComponent(query)}`);
     setMenuOpen(false);
     setLocationOpen(false);
-  }
+  };
 
   function closeMenu() {
     setMenuOpen(false);
@@ -78,7 +221,9 @@ export default function Header() {
 
   function isActive(path) {
     if (path === "/") return currentLocation.pathname === "/";
-    if (path === "/categories") return currentLocation.pathname === path;
+    if (path === "/categories") {
+      return currentLocation.pathname === path;
+    }
 
     return (
       currentLocation.pathname === path ||
@@ -101,7 +246,8 @@ export default function Header() {
               A little more joy, a little more{" "}
               <span className="font-extrabold text-[#ffd48c]">Purv</span>
               <span className="hidden sm:inline">
-                {" "}· Thoughtful finds for every celebration
+                {" "}
+                · Thoughtful finds for every celebration
               </span>
             </p>
 
@@ -153,9 +299,9 @@ export default function Header() {
             <button
               type="button"
               onClick={toggleLocation}
-              className="hidden min-w-[125px] max-w-[185px] shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-left transition hover:bg-[#f9eee5] lg:flex"
+              className="hidden min-w-[125px] max-w-[200px] shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-left transition hover:bg-[#f9eee5] lg:flex"
               aria-expanded={locationOpen}
-              aria-label="View delivery address"
+              aria-label="View delivery location"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f8e8df] text-[#8b3026]">
                 <MapPin size={19} />
@@ -177,7 +323,9 @@ export default function Header() {
                     ? savedAddress.city ||
                       savedAddress.pincode ||
                       "Saved address"
-                    : "Add your location"}
+                    : locationStatus === "loading"
+                      ? "Detecting location..."
+                      : detectedLocation || "Select your location"}
                 </span>
               </span>
             </button>
@@ -197,7 +345,7 @@ export default function Header() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search beauty, jewellery, gifts..."
+                placeholder={search ? "" : searchPlaceholders[placeholderIndex]}
                 aria-label="Search products"
                 className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-xs text-[#422b27] outline-none placeholder:text-[#a39287] focus:outline-none focus:ring-0 sm:text-sm"
               />
@@ -234,8 +382,11 @@ export default function Header() {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/70">
                 <Gift size={18} />
               </span>
+
               <span>
-                <span className="block text-xs font-extrabold">Find a Gift</span>
+                <span className="block text-xs font-extrabold">
+                  Find a Gift
+                </span>
                 <span className="mt-0.5 block text-[9px] opacity-75">
                   Made personal
                 </span>
@@ -276,9 +427,7 @@ export default function Header() {
               className="relative flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-[#76233a] to-[#9e3546] px-2.5 text-white shadow-[0_5px_14px_rgba(118,35,58,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(118,35,58,0.24)] sm:h-12 sm:gap-2 sm:px-4"
             >
               <ShoppingBag size={19} />
-
               <span className="hidden text-sm font-bold sm:inline">Cart</span>
-
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ffd88e] px-1 text-[10px] font-extrabold text-[#54251f]">
                 {cartCount}
               </span>
@@ -288,24 +437,49 @@ export default function Header() {
           {/* ADDRESS PANEL */}
           {locationOpen && (
             <div className="border-t border-[#eee1d7] bg-white px-4 py-5 shadow-lg">
-              <div className="mx-auto flex max-w-[1450px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mx-auto flex max-w-[1450px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f8e8df] text-[#8b3026]">
                     <MapPin size={21} />
                   </span>
 
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-extrabold text-[#54251f]">
-                      Your delivery address
+                      Your delivery location
                     </p>
 
-                    <p className="mt-1 max-w-xl text-xs leading-5 text-[#927d71]">
+                    <p className="mt-1 max-w-xl break-words text-xs leading-5 text-[#927d71]">
                       {addressLabel}
                     </p>
 
-                    <p className="mt-1 text-[10px] text-[#a39287]">
-                      Manage your saved addresses for checkout.
+                    {locationStatus === "loading" && (
+                      <p className="mt-2 text-xs text-[#8b3026]">
+                        Finding your location...
+                      </p>
+                    )}
+
+                    {locationStatus === "error" && (
+                      <p className="mt-2 max-w-xl text-xs leading-5 text-red-600">
+                        {locationError}
+                      </p>
+                    )}
+
+                    <p className="mt-2 text-[10px] leading-5 text-[#a39287]">
+                      Your detected area is approximate. Confirm your full
+                      address and PIN code during checkout.
                     </p>
+
+                    <button
+                      type="button"
+                      onClick={detectLocation}
+                      disabled={locationStatus === "loading"}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#eadfd5] px-3 py-2 text-xs font-bold text-[#76233a] transition hover:bg-[#fff4e8] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <LocateFixed size={15} />
+                      {locationStatus === "loading"
+                        ? "Detecting..."
+                        : "Detect my location"}
+                    </button>
                   </div>
                 </div>
 
@@ -361,6 +535,18 @@ export default function Header() {
                   </Link>
                 );
               })}
+
+              <a
+                href="https://wa.me/918810628225"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Contact us on WhatsApp"
+                title="Chat with us on WhatsApp"
+                className="ml-auto flex shrink-0 items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-xs font-bold text-green-700 transition hover:bg-green-100"
+              >
+                <Headset size={18} />
+                Contact Us
+              </a>
 
               <Link
                 to="/gift-finder"
@@ -420,6 +606,35 @@ export default function Header() {
                 <ArrowRight size={18} />
               </Link>
 
+              {/* MOBILE LOCATION */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setLocationOpen(true);
+                }}
+                className="mb-4 flex w-full items-center gap-3 rounded-xl bg-[#f8e8df] p-3 text-left text-xs font-bold text-[#8c3328]"
+              >
+                <MapPin size={18} />
+
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold text-[#927d71]">
+                    Deliver to
+                  </span>
+                  <span className="mt-1 block truncate">
+                    {savedAddress
+                      ? savedAddress.city ||
+                        savedAddress.pincode ||
+                        "Saved address"
+                      : locationStatus === "loading"
+                        ? "Detecting location..."
+                        : detectedLocation || "Select your location"}
+                  </span>
+                </span>
+
+                <ChevronDown size={15} />
+              </button>
+
               <div className="grid grid-cols-2 gap-2">
                 {navLinks.map((item) => (
                   <Link
@@ -440,8 +655,8 @@ export default function Header() {
                   .filter(
                     (category) =>
                       !navLinks.some(
-                        (item) => item.path === `/category/${category.slug}`
-                      )
+                        (item) => item.path === `/category/${category.slug}`,
+                      ),
                   )
                   .map((category) => (
                     <Link
@@ -483,25 +698,6 @@ export default function Header() {
                   My profile
                 </Link>
               </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setLocationOpen(true);
-                }}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl bg-[#f8e8df] p-3 text-left text-xs font-bold text-[#8c3328]"
-              >
-                <MapPin size={17} />
-
-                <span className="min-w-0 flex-1 truncate">
-                  {savedAddress
-                    ? `Deliver to ${savedAddress.city || "saved address"}`
-                    : "Add your delivery address"}
-                </span>
-
-                <ChevronDown size={15} />
-              </button>
             </nav>
           )}
         </header>

@@ -1,13 +1,13 @@
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=Parisienne&display=swap');
 
+@import "tailwindcss";
 /* ========================================
    PURV — GLOBAL DESIGN SYSTEM
 ======================================== */
 
 :root {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: #29201f;
   background: #fffaf5;
   font-synthesis: none;
@@ -53,7 +53,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
 
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: var(--purv-ink);
 
   background:
@@ -98,45 +98,47 @@ textarea {
   resize: vertical;
 }
 
-/* Typography */
+/* ========================================
+   GLOBAL TYPOGRAPHY
+======================================== */
+
+/* Main body font */
+html,
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Premium editorial headings */
 h1,
 h2,
 h3,
 h4,
-.font-serif {
-  font-family: 'Playfair Display', Georgia, serif;
+h5,
+h6,
+.font-serif,
+.purv-section-title {
+  font-family: 'Fraunces', Georgia, serif;
   letter-spacing: -0.035em;
 }
 
-p {
-  overflow-wrap: break-word;
+/* Navigation, buttons and forms */
+nav,
+button,
+input,
+textarea,
+select {
+  font-family: 'Inter', sans-serif;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Decorative handwritten text */
+.font-parisienne {
+  font-family: 'Parisienne', cursive !important;
 }
 
-img,
-svg,
-video,
-canvas {
-  display: block;
-}
-
-img {
-  max-width: 100%;
-}
-
-/* Accessible selection and focus */
-::selection {
-  color: #fff;
-  background: var(--purv-wine);
-}
-
-:focus-visible {
-  outline: 3px solid rgba(237, 155, 40, 0.8);
-  outline-offset: 3px;
+/* Highlighted statistics and numbers */
+.stat-number,
+.highlight-number {
+  font-family: 'Fraunces', Georgia, serif;
 }
 
 /* ========================================
@@ -346,3 +348,219 @@ img {
     transition-duration: 0.01ms !important;
   }
 }
+/* ========================================
+   PURV GLOBAL TYPOGRAPHY
+   ======================================== */
+
+/* Body text, navigation, buttons and forms */
+html,
+body {
+  font-family: "Inter", sans-serif;
+}
+
+/* All headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Fraunces", serif;
+}
+
+/* Preserve the heading font when Tailwind utilities are used */
+.font-serif {
+  font-family: "Fraunces", serif !important;
+}
+
+/* Body font for Tailwind utility classes */
+.font-sans {
+  font-family: "Inter", sans-serif !important;
+}
+
+/* Decorative handwritten branding */
+.font-parisienne {
+  font-family: "Parisienne", cursive !important;
+}
+
+/* Buttons and form controls */
+button,
+input,
+textarea,
+select {
+  font-family: "Inter", sans-serif;
+}
+
+/* Highlighted prices and statistics */
+.stat-number,
+.highlight-number {
+  font-family: "Fraunces", serif;
+}
+
+
+/* ========================================
+   PURV — SUBTLE GLOBAL ANIMATIONS
+======================================== */
+
+/* Gentle entrance for page content */
+@keyframes purv-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soft entrance for cards and sections */
+@keyframes purv-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Gentle image reveal */
+@keyframes purv-image-enter {
+  from {
+    opacity: 0.75;
+    transform: scale(1.015);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Apply to page wrappers when explicitly added */
+.purv-page-enter {
+  animation: purv-page-enter 420ms ease-out both;
+}
+
+/* Apply to selected sections */
+.purv-content-enter {
+  animation: purv-content-enter 480ms ease-out both;
+}
+
+/* Staggered entrance for repeated items */
+.purv-stagger-item {
+  animation: purv-content-enter 450ms ease-out both;
+}
+
+/* Small delays for a natural rhythm */
+.purv-stagger-item:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.purv-stagger-item:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.purv-stagger-item:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+/* Premium hover interaction for product/category cards */
+.purv-card,
+.purv-hover-card {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.purv-hover-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(66, 21, 33, 0.08);
+}
+
+/* Gentle zoom for images inside cards */
+.purv-image-wrap {
+  overflow: hidden;
+}
+
+.purv-image-wrap img {
+  transition: transform 350ms ease;
+}
+
+.purv-image-wrap:hover img {
+  transform: scale(1.035);
+}
+
+/* Smooth interactions for buttons and links */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.purv-interactive {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.purv-interactive:active {
+  transform: scale(0.985);
+}
+
+/* Soft focus for keyboard navigation */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(237, 155, 40, 0.85);
+  outline-offset: 3px;
+}
+
+/* Avoid animations for people who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .purv-page-enter,
+  .purv-content-enter,
+  .purv-stagger-item {
+    animation: none !important;
+  }
+
+  .purv-image-wrap img {
+    transition: none !important;
+  }
+
+  .purv-hover-card:hover {
+    transform: none;
+  }
+}
+
+/* Subtle animation for the search area */
+@keyframes purv-search-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(118, 35, 58, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(118, 35, 58, 0.035);
+  }
+}
+
+.purv-search-animated {
+  animation: purv-search-glow 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purv-search-animated {
+    animation: none;
+  }
+}
+

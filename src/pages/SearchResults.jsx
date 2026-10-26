@@ -125,10 +125,10 @@ export default function SearchResults() {
     <>
       <Header />
 
-      <main className="min-h-screen bg-[#fffaf4] px-4 pb-16 pt-36 sm:px-6 sm:pt-40 lg:px-10">
+     <main className="min-h-screen bg-[#fffaf5] px-4 pb-10 pt-4 sm:px-8 sm:pt-5">
         <div className="mx-auto max-w-[1440px]">
           {/* Breadcrumb */}
-          <div className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+          <div className="mb-6 mt-2 flex items-center gap-2 text-sm text-gray-500">
             <Link
               to="/"
               className="transition hover:text-[#8b3026]"
@@ -158,45 +158,6 @@ export default function SearchResults() {
                 jewellery, gifts, and little things that make
                 every celebration special.
               </p>
-
-              <form
-                onSubmit={handleSearch}
-                className="mt-6 flex max-w-2xl items-center gap-2 rounded-2xl border border-[#ead8c5] bg-white p-2 shadow-sm focus-within:border-[#b45324] focus-within:ring-4 focus-within:ring-[#b45324]/10"
-              >
-                <Search
-                  size={21}
-                  className="ml-2 shrink-0 text-[#b45324]"
-                />
-
-                <input
-                  type="search"
-                  value={searchInput}
-                  onChange={(event) =>
-                    setSearchInput(event.target.value)
-                  }
-                  placeholder="Search lipstick, skincare, gifts..."
-                  className="min-w-0 flex-1 bg-transparent px-2 py-3 text-sm text-[#54251f] outline-none placeholder:text-gray-400 sm:text-base"
-                  aria-label="Search products"
-                />
-
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchInput("")}
-                    className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                    aria-label="Clear search text"
-                  >
-                    <X size={17} />
-                  </button>
-                )}
-
-                <button
-                  type="submit"
-                  className="shrink-0 rounded-xl bg-[#8b3026] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#70251f] sm:px-6"
-                >
-                  Search
-                </button>
-              </form>
             </div>
 
             <div className="pointer-events-none absolute -right-10 -top-12 hidden h-56 w-56 rounded-full border-[28px] border-white/30 lg:block" />
