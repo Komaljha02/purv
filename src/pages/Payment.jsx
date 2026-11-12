@@ -119,7 +119,7 @@ export default function Payment() {
     <>
       <Header />
 
-      <main className="min-h-screen bg-[#fffaf4] px-4 pb-16 pt-36 sm:px-6 sm:pt-40 lg:px-10">
+      <main className="!mt-0 !pt-0 min-h-screen bg-[#fffaf4] px-4 pb-16 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <Link
             to="/checkout/address"
