@@ -1,4 +1,5 @@
 
+import { supabase } from "../lib/supabase";
 import {
   createContext,
   useContext,
@@ -9,7 +10,6 @@ import {
 
 const ShopContext = createContext(null);
 
-// Read saved data safely from localStorage
 function readStorage(key, fallback) {
   try {
     const saved = localStorage.getItem(key);
@@ -20,7 +20,6 @@ function readStorage(key, fallback) {
   }
 }
 
-// Save data safely to localStorage
 function writeStorage(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -30,47 +29,26 @@ function writeStorage(key, value) {
 }
 
 export function ShopProvider({ children }) {
-  // Shopping data
-  const [cart, setCart] = useState(() =>
-    readStorage("purv-cart", [])
-  );
-
+  const [cart, setCart] = useState(() => readStorage("purv-cart", []));
   const [wishlist, setWishlist] = useState(() =>
     readStorage("purv-wishlist", [])
   );
-
   const [addresses, setAddresses] = useState(() =>
     readStorage("purv-addresses", [])
   );
-
   const [orders, setOrders] = useState(() =>
     readStorage("purv-orders", [])
   );
 
-  // Persist data automatically
-  useEffect(() => {
-    writeStorage("purv-cart", cart);
-  }, [cart]);
+  useEffect(() => writeStorage("purv-cart", cart), [cart]);
+  useEffect(() => writeStorage("purv-wishlist", wishlist), [wishlist]);
+  useEffect(() => writeStorage("purv-addresses", addresses), [addresses]);
+  useEffect(() => writeStorage("purv-orders", orders), [orders]);
 
-  useEffect(() => {
-    writeStorage("purv-wishlist", wishlist);
-  }, [wishlist]);
-
-  useEffect(() => {
-    writeStorage("purv-addresses", addresses);
-  }, [addresses]);
-
-  useEffect(() => {
-    writeStorage("purv-orders", orders);
-  }, [orders]);
-
-  // Add a product to the cart
   function addToCart(product) {
     if (!product?.id) return;
 
     const stock = Number(product.stock);
-
-    // Do not add products that are out of stock
     if (Number.isFinite(stock) && stock <= 0) return;
 
     setCart((previous) => {
@@ -81,38 +59,23 @@ export function ShopProvider({ children }) {
       if (existingProduct) {
         const currentQuantity = Number(existingProduct.quantity) || 0;
 
-        // Respect the stock limit when stock is provided
-        if (
-          Number.isFinite(stock) &&
-          currentQuantity >= stock
-        ) {
+        if (Number.isFinite(stock) && currentQuantity >= stock) {
           return previous;
         }
 
         return previous.map((item) =>
           item.id === product.id
-            ? {
-                ...item,
-                quantity: currentQuantity + 1,
-              }
+            ? { ...item, quantity: currentQuantity + 1 }
             : item
         );
       }
 
-      return [
-        ...previous,
-        {
-          ...product,
-          quantity: 1,
-        },
-      ];
+      return [...previous, { ...product, quantity: 1 }];
     });
   }
 
-  // Change quantity by +1 or -1
   function changeQuantity(productId, change) {
     const amount = Number(change);
-
     if (!Number.isFinite(amount) || amount === 0) return;
 
     setCart((previous) =>
@@ -124,42 +87,30 @@ export function ShopProvider({ children }) {
           const nextQuantity = currentQuantity + amount;
 
           if (nextQuantity <= 0) {
-            return {
-              ...item,
-              quantity: 0,
-            };
+            return { ...item, quantity: 0 };
           }
 
           const stock = Number(item.stock);
 
-          // Enforce the available stock limit
-          if (
-            Number.isFinite(stock) &&
-            stock >= 0
-          ) {
+          if (Number.isFinite(stock) && stock >= 0) {
             return {
               ...item,
               quantity: Math.min(nextQuantity, stock),
             };
           }
 
-          return {
-            ...item,
-            quantity: nextQuantity,
-          };
+          return { ...item, quantity: nextQuantity };
         })
         .filter((item) => item.quantity > 0)
     );
   }
 
-  // Remove a product completely from the cart
   function removeFromCart(productId) {
     setCart((previous) =>
       previous.filter((item) => item.id !== productId)
     );
   }
 
-  // Add or remove a product from the wishlist
   function toggleWishlist(productId) {
     setWishlist((previous) =>
       previous.includes(productId)
@@ -168,7 +119,6 @@ export function ShopProvider({ children }) {
     );
   }
 
-  // Save a delivery address
   function saveAddress(address) {
     const newAddress = {
       ...address,
@@ -182,12 +132,15 @@ export function ShopProvider({ children }) {
     };
 
     setAddresses((previous) => [...previous, newAddress]);
-
     return newAddress;
   }
 
-  // Place an order
-  function placeOrder(addressId, paymentMethod) {
+  // Place order and save the selected delivery schedule.
+  async function placeOrder(
+    addressId,
+    paymentMethod,
+    deliverySchedule = {}
+  ) {
     if (cart.length === 0) return null;
 
     const selectedAddress = addresses.find(
@@ -196,40 +149,100 @@ export function ShopProvider({ children }) {
 
     if (!selectedAddress) return null;
 
+    const deliveryDate = deliverySchedule.deliveryDate || null;
+    const deliveryTimeSlot =
+      deliverySchedule.deliveryTimeSlot || null;
+
+    if (!deliveryDate || !deliveryTimeSlot) {
+      throw new Error("Please select a delivery date and time slot.");
+    }
+
     const subtotal = cart.reduce(
       (total, item) =>
-        total + Number(item.price || 0) * Number(item.quantity || 0),
+        total +
+        Number(item.price || 0) * Number(item.quantity || 0),
       0
     );
 
+    const deliveryCharge = 0;
+
+    const orderId =
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `order-${Date.now()}`;
+
+    const orderNumber = `PURV-${Date.now()}`;
+
+    const orderItems = cart.map((item) => ({
+      id: item.id,
+      name: item.name || "Product",
+      price: Number(item.price || 0),
+      quantity: Number(item.quantity || 0),
+      image:
+        item.image ||
+        item.image_url ||
+        item.product_image ||
+        item.productImage ||
+        item.thumbnail ||
+        "",
+    }));
+
     const newOrder = {
-      id: `PURV-${Date.now()}`,
-      items: cart.map((item) => ({ ...item })),
-      address: { ...selectedAddress },
-      paymentMethod,
+      id: orderId,
+      order_number: orderNumber,
+      items: orderItems,
+      delivery_address: { ...selectedAddress },
+      payment_method: paymentMethod,
+      payment_status:
+        paymentMethod === "Cash on Delivery"
+          ? "Pending"
+          : "Demo payment - not processed",
+      delivery_date: deliveryDate,
+      delivery_time_slot: deliveryTimeSlot,
       subtotal,
+      delivery_charge: deliveryCharge,
+      total: subtotal + deliveryCharge,
       status: "Order placed",
-      createdAt: new Date().toISOString(),
     };
 
-    setOrders((previous) => [newOrder, ...previous]);
-    setCart([]);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .insert([newOrder]);
 
-    return newOrder;
+      if (error) throw error;
+
+      const customerOrder = {
+        ...newOrder,
+        orderNumber,
+        paymentMethod,
+        createdAt: new Date().toISOString(),
+        address: { ...selectedAddress },
+      };
+
+      setOrders((previous) => [
+        customerOrder,
+        ...previous,
+      ]);
+
+      setCart([]);
+      return customerOrder;
+    } catch (error) {
+      console.error("Supabase order error:", error);
+      throw error;
+    }
   }
 
-  // Total quantity of items in the cart
   const cartCount = useMemo(
     () =>
       cart.reduce(
-        (total, item) =>
-          total + (Number(item.quantity) || 0),
+        (total, item) => total + (Number(item.quantity) || 0),
         0
       ),
     [cart]
   );
 
-  // Total price of all cart items
   const cartTotal = useMemo(
     () =>
       cart.reduce(
@@ -242,7 +255,6 @@ export function ShopProvider({ children }) {
     [cart]
   );
 
-  // Expose shopping state and functions to components
   const value = useMemo(
     () => ({
       cart,
@@ -258,14 +270,7 @@ export function ShopProvider({ children }) {
       saveAddress,
       placeOrder,
     }),
-    [
-      cart,
-      wishlist,
-      addresses,
-      orders,
-      cartCount,
-      cartTotal,
-    ]
+    [cart, wishlist, addresses, orders, cartCount, cartTotal]
   );
 
   return (
@@ -275,14 +280,11 @@ export function ShopProvider({ children }) {
   );
 }
 
-// Shared shopping hook
 export function useShop() {
   const context = useContext(ShopContext);
 
   if (!context) {
-    throw new Error(
-      "useShop must be used inside ShopProvider"
-    );
+    throw new Error("useShop must be used inside ShopProvider");
   }
 
   return context;

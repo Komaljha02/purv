@@ -1,4 +1,3 @@
-
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import Home from "./pages/Home";
@@ -16,10 +15,13 @@ import OrderTracking from "./pages/OrderTracking";
 import Profile from "./pages/Profile";
 import GiftFinder from "./pages/GiftFinder";
 import Contact from "./pages/Contact";
+import ScrollToTop from "./components/ScrollToTop";
 
 import AdminLogin from "./pages/AdminLogin";
 import AdminProducts from "./pages/AdminProducts";
-
+import AdminOrders from "./pages/AdminOrders";
+import AdminCategories from "./pages/AdminCategories";
+import AdminHomepageOffers from "./pages/AdminHomepageOffers";
 function ComingSoon({ title }) {
   return (
     <main className="mx-auto max-w-5xl px-5 py-20 text-center">
@@ -48,48 +50,50 @@ function NotFound() {
 export default function App() {
   const navigate = useNavigate();
 
-useEffect(() => {
-  const handleAdminShortcut = (event) => {
-    if (
-      event.ctrlKey &&
-      event.shiftKey &&
-      event.key.toLowerCase() === "a"
-    ) {
-      event.preventDefault();
-      navigate("/admin/login");
-    }
-  };
+  useEffect(() => {
+    const handleAdminShortcut = (event) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        navigate("/admin/login");
+      }
+    };
 
-  window.addEventListener("keydown", handleAdminShortcut);
+    window.addEventListener("keydown", handleAdminShortcut);
 
-  return () => {
-    window.removeEventListener("keydown", handleAdminShortcut);
-  };
-}, [navigate]);
+    return () => {
+      window.removeEventListener("keydown", handleAdminShortcut);
+    };
+  }, [navigate]);
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/categories" element={<Categories />} />
-      <Route path="/category/:slug" element={<CategoryProducts />} />
-      <Route path="/search" element={<SearchResults />} />
-      <Route path="/product/:id" element={<ProductDetails />} />
-      <Route path="/wishlist" element={<Wishlist />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/checkout/address" element={<Address />} />
-      <Route path="/checkout/payment" element={<Payment />} />
-      <Route path="/order-success/:id" element={<OrderSuccess />} />
-      <Route path="/orders" element={<Orders />} />
-      <Route path="/orders/:id" element={<OrderTracking />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/gift-finder" element={<GiftFinder />} />
-      <Route path="/contact" element={<Contact />} />
+    <>
+      <ScrollToTop />
 
-      <Route path="/admin" element={<AdminProducts />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/products" element={<AdminProducts />} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/category/:slug" element={<CategoryProducts />} />
+        <Route path="/search" element={<SearchResults />} />
+        <Route path="/product/:id" element={<ProductDetails />} />
+        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout/address" element={<Address />} />
+        <Route path="/checkout/payment" element={<Payment />} />
+        <Route path="/order-success/:id" element={<OrderSuccess />} />
+        <Route path="/orders" element={<Orders />} />
+        <Route path="/orders/:id" element={<OrderTracking />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/gift-finder" element={<GiftFinder />} />
+        <Route path="/contact" element={<Contact />} />
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="/admin" element={<AdminProducts />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/products" element={<AdminProducts />} />
+        <Route path="/admin/orders" element={<AdminOrders />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin/offers" element={<AdminHomepageOffers />} />
+      </Routes>
+    </>
   );
 }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -14,6 +13,8 @@ import {
   ShoppingBag,
   Wallet,
   Sparkles,
+  CalendarDays,
+  Clock,
 } from "lucide-react";
 
 import Header from "../components/Header";
@@ -23,39 +24,52 @@ export default function Payment() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const {
-    cart,
-    cartTotal,
-    addresses,
-    placeOrder,
-  } = useShop();
+  const { cart, cartTotal, addresses, placeOrder } = useShop();
 
   const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState("");
   const [error, setError] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const addressId = location.state?.addressId;
-
-  const address = addresses.find(
-    (item) => item.id === addressId
-  );
+  const address = addresses.find((item) => item.id === addressId);
 
   const itemCount = cart.reduce(
     (total, item) => total + item.quantity,
-    0
+    0,
   );
 
   const subtotal = cartTotal;
   const deliveryCharge = 0;
   const grandTotal = subtotal + deliveryCharge;
 
-  function handlePlaceOrder() {
+  // Minimum selectable delivery date: today
+  const today = new Date();
+
+  const minDeliveryDate = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  // Available delivery time slots
+  const deliveryTimeSlots = [
+    "9:00 AM - 12:00 PM",
+    "12:00 PM - 3:00 PM",
+    "3:00 PM - 6:00 PM",
+    "6:00 PM - 9:00 PM",
+  ];
+
+  async function handlePlaceOrder() {
     if (isPlacingOrder) return;
 
     setError("");
 
     if (cart.length === 0) {
-      setError("Your cart is empty. Please add products before placing an order.");
+      setError(
+        "Your cart is empty. Please add products before placing an order.",
+      );
       return;
     }
 
@@ -64,10 +78,23 @@ export default function Payment() {
       return;
     }
 
+    if (!deliveryDate) {
+      setError("Please select your preferred delivery date.");
+      return;
+    }
+
+    if (!deliveryTimeSlot) {
+      setError("Please select your preferred delivery time slot.");
+      return;
+    }
+
     setIsPlacingOrder(true);
 
     try {
-      const order = placeOrder(addressId, paymentMethod);
+      const order = await placeOrder(addressId, paymentMethod, {
+        deliveryDate,
+        deliveryTimeSlot,
+      });
 
       if (order) {
         navigate(`/order-success/${order.id}`, {
@@ -79,7 +106,11 @@ export default function Payment() {
       }
     } catch (err) {
       console.error("Order placement failed:", err);
-      setError("Something went wrong while placing your order. Please try again.");
+
+      setError(
+        err.message || "Something went wrong while placing your order.",
+      );
+
       setIsPlacingOrder(false);
     }
   }
@@ -110,8 +141,9 @@ export default function Payment() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#806b61] sm:text-base">
-              Review your delivery details, choose how you want to pay,
-              and get your festive favourites delivered to your door.
+              Review your delivery details, schedule your delivery, choose how
+              you want to pay, and get your festive favourites delivered to
+              your door.
             </p>
           </div>
 
@@ -155,8 +187,8 @@ export default function Payment() {
               </h2>
 
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-                Add something beautiful to your cart before proceeding
-                to checkout.
+                Add something beautiful to your cart before proceeding to
+                checkout.
               </p>
 
               <Link
@@ -178,8 +210,8 @@ export default function Payment() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Please select a saved address or add a new address
-                before reviewing your order.
+                Please select a saved address or add a new address before
+                reviewing your order.
               </p>
 
               <button
@@ -207,6 +239,7 @@ export default function Payment() {
                         <h2 className="text-lg font-bold text-[#54251f]">
                           Delivery address
                         </h2>
+
                         <p className="mt-1 text-sm text-gray-500">
                           Your order will be delivered here
                         </p>
@@ -226,6 +259,7 @@ export default function Payment() {
                       <h3 className="font-bold text-[#54251f]">
                         {address.fullName}
                       </h3>
+
                       <span className="rounded-full bg-[#f5e7d5] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#8b3026]">
                         Deliver to
                       </span>
@@ -242,6 +276,125 @@ export default function Payment() {
                   </div>
                 </div>
 
+                {/* Schedule delivery */}
+                <div className="rounded-3xl border border-[#f0dfca] bg-white p-5 shadow-sm sm:p-7">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff0dc] text-[#8b3026]">
+                      <CalendarDays size={21} />
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-[#54251f]">
+                        Schedule your delivery
+                      </h2>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        Choose a convenient date and time for your order.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Date selection */}
+                  <div className="mt-6">
+                    <label
+                      htmlFor="delivery-date"
+                      className="mb-2 block text-sm font-semibold text-[#54251f]"
+                    >
+                      Preferred delivery date
+                    </label>
+
+                    <input
+                      id="delivery-date"
+                      type="date"
+                      min={minDeliveryDate}
+                      value={deliveryDate}
+                      onChange={(e) => setDeliveryDate(e.target.value)}
+                      className="w-full rounded-xl border border-[#e8d8c8] bg-[#fffaf4] px-4 py-3 text-sm text-[#54251f] outline-none transition focus:border-[#8b3026] focus:ring-2 focus:ring-[#8b3026]/10"
+                    />
+                  </div>
+
+                  {/* Time slot selection */}
+                  <div className="mt-6">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Clock size={17} className="text-[#8b3026]" />
+
+                      <h3 className="text-sm font-semibold text-[#54251f]">
+                        Choose a delivery time slot
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {deliveryTimeSlots.map((slot) => (
+                        <label
+                          key={slot}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${
+                            deliveryTimeSlot === slot
+                              ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
+                              : "border-[#eee3d8] hover:border-[#d8b9a3]"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="deliveryTimeSlot"
+                            value={slot}
+                            checked={deliveryTimeSlot === slot}
+                            onChange={() => setDeliveryTimeSlot(slot)}
+                            className="h-4 w-4 accent-[#8b3026]"
+                          />
+
+                          <span className="text-sm font-semibold text-[#54251f]">
+                            {slot}
+                          </span>
+
+                          {deliveryTimeSlot === slot && (
+                            <CheckCircle2
+                              size={17}
+                              className="ml-auto shrink-0 text-green-600"
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Schedule preview */}
+                  {deliveryDate && deliveryTimeSlot && (
+                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                      <CheckCircle2
+                        size={20}
+                        className="mt-0.5 shrink-0 text-green-700"
+                      />
+
+                      <div>
+                        <p className="text-sm font-bold text-green-800">
+                          Delivery schedule selected
+                        </p>
+
+                        <p className="mt-1 text-sm text-green-700">
+                          {new Date(
+                            `${deliveryDate}T00:00:00`,
+                          ).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </p>
+
+                        <p className="mt-1 text-sm text-green-700">
+                          {deliveryTimeSlot}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-5 rounded-xl bg-[#f7f5ed] p-4">
+                    <p className="text-xs leading-5 text-gray-600">
+                      Your selected delivery date and time will be saved with
+                      your order.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Payment method */}
                 <div className="rounded-3xl border border-[#f0dfca] bg-white p-5 shadow-sm sm:p-7">
                   <div className="flex items-start gap-3">
@@ -253,6 +406,7 @@ export default function Payment() {
                       <h2 className="text-lg font-bold text-[#54251f]">
                         Payment method
                       </h2>
+
                       <p className="mt-1 text-sm text-gray-500">
                         Choose your preferred payment option
                       </p>
@@ -273,7 +427,9 @@ export default function Payment() {
                         name="payment"
                         value="Cash on Delivery"
                         checked={paymentMethod === "Cash on Delivery"}
-                        onChange={() => setPaymentMethod("Cash on Delivery")}
+                        onChange={() =>
+                          setPaymentMethod("Cash on Delivery")
+                        }
                         className="mt-1 h-4 w-4 accent-[#8b3026]"
                       />
 
@@ -286,6 +442,7 @@ export default function Payment() {
                           <span className="font-bold text-[#54251f]">
                             Cash on Delivery
                           </span>
+
                           {paymentMethod === "Cash on Delivery" && (
                             <CheckCircle2
                               size={17}
@@ -313,7 +470,9 @@ export default function Payment() {
                         name="payment"
                         value="Demo Online Payment"
                         checked={paymentMethod === "Demo Online Payment"}
-                        onChange={() => setPaymentMethod("Demo Online Payment")}
+                        onChange={() =>
+                          setPaymentMethod("Demo Online Payment")
+                        }
                         className="mt-1 h-4 w-4 accent-[#8b3026]"
                       />
 
@@ -326,6 +485,7 @@ export default function Payment() {
                           <span className="font-bold text-[#54251f]">
                             Online Payment
                           </span>
+
                           {paymentMethod === "Demo Online Payment" && (
                             <CheckCircle2
                               size={17}
@@ -335,16 +495,19 @@ export default function Payment() {
                         </div>
 
                         <p className="mt-1 text-sm leading-5 text-gray-500">
-                          Demo checkout only. No real payment will be processed.
+                          Demo checkout only. No real payment will be
+                          processed.
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
                             UPI demo
                           </span>
+
                           <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
                             Card demo
                           </span>
+
                           <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
                             Net banking demo
                           </span>
@@ -358,6 +521,7 @@ export default function Payment() {
                       size={20}
                       className="mt-0.5 shrink-0 text-green-700"
                     />
+
                     <p className="text-xs leading-5 text-gray-600">
                       This is a frontend-only shopping demo. Online payment
                       options do not connect to a bank or payment provider.
@@ -372,16 +536,14 @@ export default function Payment() {
                       <h2 className="text-lg font-bold text-[#54251f]">
                         Items in your order
                       </h2>
+
                       <p className="mt-1 text-sm text-gray-500">
                         {itemCount} {itemCount === 1 ? "item" : "items"} ready
                         for checkout
                       </p>
                     </div>
 
-                    <PackageCheck
-                      size={25}
-                      className="text-[#b45324]"
-                    />
+                    <PackageCheck size={25} className="text-[#b45324]" />
                   </div>
 
                   <div className="mt-5 divide-y divide-[#f1e7dc]">
@@ -392,10 +554,17 @@ export default function Payment() {
                       >
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#fff5e9]">
                           <img
-                            src={item.image}
+                            src={
+                              item.image ||
+                              item.image_url ||
+                              item.product_image
+                            }
                             alt={item.name}
                             className="h-full w-full object-cover"
                             loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         </div>
 
@@ -409,7 +578,10 @@ export default function Payment() {
                           </p>
 
                           <p className="mt-2 text-sm font-bold text-[#8b3026]">
-                            ₹{Number(item.price * item.quantity).toLocaleString("en-IN")}
+                            ₹
+                            {Number(
+                              item.price * item.quantity,
+                            ).toLocaleString("en-IN")}
                           </p>
                         </div>
                       </div>
@@ -424,7 +596,10 @@ export default function Payment() {
                   <div className="bg-[#54251f] px-6 py-5 text-white">
                     <div className="flex items-center gap-2">
                       <ShoppingBag size={20} />
-                      <h2 className="text-lg font-bold">Order summary</h2>
+
+                      <h2 className="text-lg font-bold">
+                        Order summary
+                      </h2>
                     </div>
 
                     <p className="mt-1 text-sm text-[#f1d9ca]">
@@ -438,6 +613,7 @@ export default function Payment() {
                         <span className="text-gray-500">
                           Item subtotal ({itemCount} items)
                         </span>
+
                         <span className="font-semibold text-[#54251f]">
                           ₹{Number(subtotal).toLocaleString("en-IN")}
                         </span>
@@ -447,6 +623,7 @@ export default function Payment() {
                         <span className="text-gray-500">
                           Delivery fee
                         </span>
+
                         <span className="font-semibold text-green-700">
                           {deliveryCharge === 0
                             ? "FREE"
@@ -455,12 +632,36 @@ export default function Payment() {
                       </div>
                     </div>
 
+                    {/* Selected delivery schedule */}
+                    {deliveryDate && deliveryTimeSlot && (
+                      <div className="mt-5 rounded-xl bg-[#fff8ef] p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-[#8b3026]">
+                          Scheduled delivery
+                        </p>
+
+                        <p className="mt-2 text-sm font-semibold text-[#54251f]">
+                          {new Date(
+                            `${deliveryDate}T00:00:00`,
+                          ).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-600">
+                          {deliveryTimeSlot}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="my-5 border-t border-dashed border-[#e8d8c8]" />
 
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-base font-bold text-[#54251f]">
                         Total payable
                       </span>
+
                       <span className="text-2xl font-bold text-[#8b3026]">
                         ₹{Number(grandTotal).toLocaleString("en-IN")}
                       </span>
@@ -499,7 +700,10 @@ export default function Payment() {
 
                     <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
                       <LockKeyhole size={14} />
-                      <span>Checkout demo · No real payment processing</span>
+
+                      <span>
+                        Checkout demo · No real payment processing
+                      </span>
                     </div>
 
                     <Link
@@ -517,6 +721,7 @@ export default function Payment() {
                     size={21}
                     className="mt-0.5 shrink-0 text-green-700"
                   />
+
                   <p className="text-xs leading-5 text-gray-500">
                     Your order details are managed by the Purv frontend demo.
                     Connect a backend and a payment provider before accepting

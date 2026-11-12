@@ -1,37 +1,50 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=Parisienne&display=swap');
 
 @import "tailwindcss";
-/* ========================================
-   PURV — GLOBAL DESIGN SYSTEM
-======================================== */
+
+/* =========================================================
+   PURV PUJA SAMAGRI — GLOBAL DESIGN SYSTEM
+========================================================= */
 
 :root {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   color: #29201f;
-  background: #fffaf5;
+  background: #fffaf3;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* Brand colours */
   --purv-wine: #76233a;
   --purv-wine-dark: #421521;
+  --purv-wine-light: #92364a;
+
+  /* Golden-yellow accents */
+  --purv-gold: #d5a94f;
+  --purv-gold-dark: #a77a32;
+  --purv-gold-light: #fff0c9;
   --purv-saffron: #ed9b28;
-  --purv-coral: #e86f51;
-  --purv-cream: #fffaf5;
+
+  /* Backgrounds */
+  --purv-cream: #fffaf3;
+  --purv-cream-dark: #fff0dc;
   --purv-blush: #f8e8e5;
+  --purv-white: #ffffff;
+
+  /* Text and borders */
   --purv-ink: #29201f;
   --purv-muted: #82736f;
-  --purv-border: #f0e3d9;
+  --purv-border: #eadbc9;
 
+  /* Layout */
   --purv-page-width: 1500px;
   --purv-page-gutter: 24px;
 }
 
-/* ========================================
-   RESET & BASE LAYOUT
-======================================== */
+/* =========================================================
+   RESET AND BASE LAYOUT
+========================================================= */
 
 *,
 *::before,
@@ -42,8 +55,6 @@
 html {
   min-width: 320px;
   scroll-behavior: smooth;
-
-  /* Prevent anchor navigation from leaving an oversized gap */
   scroll-padding-top: 16px;
 }
 
@@ -52,27 +63,21 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   color: var(--purv-ink);
-
-  background:
-    radial-gradient(
-      ellipse at 0% 0%,
-      rgba(237, 155, 40, 0.055),
-      transparent 30%
-    ),
-    var(--purv-cream);
+  background: var(--purv-cream);
 }
 
-/* Prevent the React root from introducing layout spacing */
 #root {
   min-height: 100vh;
   margin: 0;
   padding: 0;
 }
 
-/* Keep form controls consistent */
+img {
+  max-width: 100%;
+}
+
 button,
 input,
 textarea,
@@ -98,17 +103,24 @@ textarea {
   resize: vertical;
 }
 
-/* ========================================
-   GLOBAL TYPOGRAPHY
-======================================== */
-
-/* Main body font */
-html,
-body {
-  font-family: 'Inter', sans-serif;
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Premium editorial headings */
+::selection {
+  color: var(--purv-wine-dark);
+  background: #f4d78e;
+}
+
+/* =========================================================
+   GLOBAL TYPOGRAPHY
+========================================================= */
+
+html,
+body {
+  font-family: "Inter", sans-serif;
+}
+
 h1,
 h2,
 h3,
@@ -117,40 +129,45 @@ h5,
 h6,
 .font-serif,
 .purv-section-title {
-  font-family: 'Fraunces', Georgia, serif;
-  letter-spacing: -0.035em;
+  font-family: "Fraunces", Georgia, serif;
+  letter-spacing: -0.025em;
 }
 
-/* Navigation, buttons and forms */
+.font-serif {
+  font-family: "Fraunces", Georgia, serif !important;
+}
+
+.font-sans {
+  font-family: "Inter", sans-serif !important;
+}
+
+.font-parisienne {
+  font-family: "Parisienne", cursive !important;
+}
+
 nav,
 button,
 input,
 textarea,
 select {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
-/* Decorative handwritten text */
-.font-parisienne {
-  font-family: 'Parisienne', cursive !important;
-}
-
-/* Highlighted statistics and numbers */
 .stat-number,
 .highlight-number {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: "Fraunces", Georgia, serif;
 }
 
-/* ========================================
+/* =========================================================
    PURV BRAND UTILITIES
-======================================== */
+========================================================= */
 
 .purv-gradient {
   background: linear-gradient(
     135deg,
     #421521 0%,
     #76233a 52%,
-    #b44a48 100%
+    #a9444d 100%
   );
 }
 
@@ -158,8 +175,8 @@ select {
   background: linear-gradient(
     100deg,
     #76233a,
-    #d36a3f 70%,
-    #ed9b28
+    #b77935 70%,
+    #edb94e
   );
   -webkit-background-clip: text;
   background-clip: text;
@@ -167,17 +184,17 @@ select {
 }
 
 .purv-glass {
-  background: rgba(255, 250, 245, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 250, 243, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   box-shadow: 0 12px 40px rgba(66, 21, 33, 0.08);
   backdrop-filter: blur(18px);
 }
 
 .purv-card {
   border: 1px solid var(--purv-border);
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 5px 20px rgba(66, 21, 33, 0.035);
+  border-radius: 18px;
+  background: var(--purv-white);
+  box-shadow: 0 4px 15px rgba(66, 21, 33, 0.035);
   transition:
     transform 220ms ease,
     box-shadow 220ms ease,
@@ -185,31 +202,32 @@ select {
 }
 
 .purv-card:hover {
-  transform: translateY(-4px);
-  border-color: #e8c5b5;
-  box-shadow: 0 18px 38px rgba(66, 21, 33, 0.09);
+  transform: translateY(-3px);
+  border-color: #d8b875;
+  box-shadow: 0 12px 28px rgba(66, 21, 33, 0.09);
 }
 
 .purv-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 9px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(120deg, #76233a, #a73746);
-  padding: 13px 24px;
-  color: #fff;
+  padding: 12px 23px;
+  background: linear-gradient(120deg, #76233a, #963447);
+  color: white;
   font-weight: 700;
-  box-shadow: 0 7px 18px rgba(118, 35, 58, 0.2);
+  box-shadow: 0 5px 15px rgba(118, 35, 58, 0.18);
   transition:
     transform 180ms ease,
-    box-shadow 180ms ease;
+    box-shadow 180ms ease,
+    background 180ms ease;
 }
 
 .purv-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 11px 25px rgba(118, 35, 58, 0.27);
+  box-shadow: 0 9px 22px rgba(118, 35, 58, 0.25);
 }
 
 .purv-button:active {
@@ -217,27 +235,27 @@ select {
 }
 
 .purv-eyebrow {
-  color: #b45324;
+  color: var(--purv-gold-dark);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .purv-section-title {
   color: var(--purv-wine-dark);
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
   font-weight: 700;
-  line-height: 1.12;
+  line-height: 1.15;
 }
 
 .purv-muted {
   color: var(--purv-muted);
 }
 
-/* ========================================
+/* =========================================================
    PAGE LAYOUT HELPERS
-======================================== */
+========================================================= */
 
 .purv-container {
   width: min(
@@ -250,25 +268,115 @@ select {
 .purv-page {
   min-height: 100vh;
   margin: 0;
-  padding-block: 24px 56px;
+  padding-block: 24px 48px;
 }
 
 .purv-section {
-  margin-block: 32px;
+  margin-block: 28px;
 }
 
 .purv-section:first-child {
   margin-top: 0;
 }
 
-/* ========================================
-   ANIMATIONS
-======================================== */
+/* FIXED POSITIONING FOR CUSTOMER HEADER */
+.purv-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  background: var(--purv-cream);
+  border-bottom: 1px solid rgba(213, 169, 79, 0.25);
+  box-shadow: 0 2px 8px rgba(70, 24, 31, 0.06);
+}
+
+.purv-header + main,
+main {
+  margin-top: 0;
+}
+
+main img {
+  display: block;
+}
+
+/* =========================================================
+   GOLDEN DETAILS
+========================================================= */
+
+/* Reusable decorative golden line */
+.purv-gold-line {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--purv-gold),
+    transparent
+  );
+}
+
+/* Reusable warm golden background */
+.purv-gold-bg {
+  background: linear-gradient(
+    135deg,
+    #fff7e8,
+    #ffedc9
+  );
+}
+
+/* Golden borders for premium cards */
+.purv-gold-border {
+  border: 1px solid rgba(213, 169, 79, 0.45);
+}
+
+/* Consistent lotus/decorative icon colour */
+.purv-lotus,
+.purv-decoration {
+  color: var(--purv-gold-dark);
+}
+
+/* =========================================================
+   HOMEPAGE AND PRODUCT IMAGE HELPERS
+========================================================= */
+
+.purv-image-wrap {
+  overflow: hidden;
+  background: #fbf0df;
+}
+
+.purv-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    transform 350ms ease,
+    opacity 250ms ease;
+}
+
+.purv-image-wrap:hover img {
+  transform: scale(1.035);
+}
+
+.purv-hover-card {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.purv-hover-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(66, 21, 33, 0.08);
+  border-color: #d8b875;
+}
+
+/* =========================================================
+   SUBTLE PAGE ANIMATIONS
+========================================================= */
 
 @keyframes purv-fade-up {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(16px);
   }
 
   to {
@@ -277,132 +385,6 @@ select {
   }
 }
 
-@keyframes purv-soft-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.animate-purv-fade-up {
-  animation: purv-fade-up 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-.animate-purv-float {
-  animation: purv-soft-float 4s ease-in-out infinite;
-}
-
-/* ========================================
-   RESPONSIVE LAYOUT
-======================================== */
-
-@media (max-width: 768px) {
-  :root {
-    --purv-page-gutter: 16px;
-  }
-
-  .purv-page {
-    padding-block: 18px 40px;
-  }
-
-  .purv-section {
-    margin-block: 24px;
-  }
-
-  .purv-card {
-    border-radius: 18px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --purv-page-gutter: 12px;
-  }
-
-  .purv-page {
-    padding-block: 14px 32px;
-  }
-
-  .purv-section {
-    margin-block: 20px;
-  }
-
-  .purv-button {
-    gap: 7px;
-    padding: 11px 18px;
-  }
-}
-
-/* Respect reduced-motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-/* ========================================
-   PURV GLOBAL TYPOGRAPHY
-   ======================================== */
-
-/* Body text, navigation, buttons and forms */
-html,
-body {
-  font-family: "Inter", sans-serif;
-}
-
-/* All headings */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: "Fraunces", serif;
-}
-
-/* Preserve the heading font when Tailwind utilities are used */
-.font-serif {
-  font-family: "Fraunces", serif !important;
-}
-
-/* Body font for Tailwind utility classes */
-.font-sans {
-  font-family: "Inter", sans-serif !important;
-}
-
-/* Decorative handwritten branding */
-.font-parisienne {
-  font-family: "Parisienne", cursive !important;
-}
-
-/* Buttons and form controls */
-button,
-input,
-textarea,
-select {
-  font-family: "Inter", sans-serif;
-}
-
-/* Highlighted prices and statistics */
-.stat-number,
-.highlight-number {
-  font-family: "Fraunces", serif;
-}
-
-
-/* ========================================
-   PURV — SUBTLE GLOBAL ANIMATIONS
-======================================== */
-
-/* Gentle entrance for page content */
 @keyframes purv-page-enter {
   from {
     opacity: 0;
@@ -415,7 +397,6 @@ select {
   }
 }
 
-/* Soft entrance for cards and sections */
 @keyframes purv-content-enter {
   from {
     opacity: 0;
@@ -428,7 +409,6 @@ select {
   }
 }
 
-/* Gentle image reveal */
 @keyframes purv-image-enter {
   from {
     opacity: 0.75;
@@ -441,22 +421,52 @@ select {
   }
 }
 
-/* Apply to page wrappers when explicitly added */
+@keyframes purv-soft-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes purv-search-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(118, 35, 58, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(118, 35, 58, 0.035);
+  }
+}
+
+.animate-purv-fade-up {
+  animation: purv-fade-up 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-purv-float {
+  animation: purv-soft-float 4s ease-in-out infinite;
+}
+
 .purv-page-enter {
   animation: purv-page-enter 420ms ease-out both;
 }
 
-/* Apply to selected sections */
 .purv-content-enter {
   animation: purv-content-enter 480ms ease-out both;
 }
 
-/* Staggered entrance for repeated items */
+.purv-image-enter {
+  animation: purv-image-enter 500ms ease-out both;
+}
+
 .purv-stagger-item {
   animation: purv-content-enter 450ms ease-out both;
 }
 
-/* Small delays for a natural rhythm */
 .purv-stagger-item:nth-child(2) {
   animation-delay: 60ms;
 }
@@ -469,38 +479,13 @@ select {
   animation-delay: 180ms;
 }
 
-/* Premium hover interaction for product/category cards */
-.purv-card,
-.purv-hover-card {
-  transition:
-    transform 220ms ease,
-    box-shadow 220ms ease,
-    border-color 220ms ease;
+.purv-search-animated {
+  animation: purv-search-glow 3s ease-in-out infinite;
 }
 
-.purv-hover-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 26px rgba(66, 21, 33, 0.08);
-}
-
-/* Gentle zoom for images inside cards */
-.purv-image-wrap {
-  overflow: hidden;
-}
-
-.purv-image-wrap img {
-  transition: transform 350ms ease;
-}
-
-.purv-image-wrap:hover img {
-  transform: scale(1.035);
-}
-
-/* Smooth interactions for buttons and links */
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
+/* =========================================================
+   BUTTONS, LINKS AND ACCESSIBILITY
+========================================================= */
 
 .purv-interactive {
   transition:
@@ -515,52 +500,522 @@ a {
   transform: scale(0.985);
 }
 
-/* Soft focus for keyboard navigation */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid rgba(237, 155, 40, 0.85);
+  outline: 2px solid var(--purv-gold);
   outline-offset: 3px;
 }
 
-/* Avoid animations for people who prefer reduced motion */
+/* =========================================================
+   RESPONSIVE LAYOUT
+========================================================= */
+
+@media (max-width: 1024px) {
+  :root {
+    --purv-page-gutter: 20px;
+  }
+
+  .purv-section {
+    margin-block: 26px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --purv-page-gutter: 16px;
+  }
+
+  .purv-page {
+    padding-block: 18px 36px;
+  }
+
+  .purv-section {
+    margin-block: 22px;
+  }
+
+  .purv-card {
+    border-radius: 15px;
+  }
+
+  .purv-button {
+    padding: 11px 19px;
+  }
+
+  main section {
+    scroll-margin-top: 90px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --purv-page-gutter: 12px;
+  }
+
+  .purv-page {
+    padding-block: 14px 30px;
+  }
+
+  .purv-section {
+    margin-block: 18px;
+  }
+
+  .purv-card {
+    border-radius: 12px;
+  }
+
+  .purv-button {
+    gap: 7px;
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+
+  .purv-section-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION ACCESSIBILITY
+========================================================= */
+
 @media (prefers-reduced-motion: reduce) {
-  .purv-page-enter,
-  .purv-content-enter,
-  .purv-stagger-item {
-    animation: none !important;
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .purv-hover-card:hover,
+  .purv-card:hover {
+    transform: none;
   }
 
   .purv-image-wrap img {
     transition: none !important;
   }
+}
 
-  .purv-hover-card:hover {
-    transform: none;
+/* =========================================
+   PURV HOMEPAGE — BURGUNDY & GOLD FINISH
+========================================= */
+
+.purv-home-hero {
+  background: linear-gradient(
+    115deg,
+    #fff8e8 0%,
+    #f9e6b9 48%,
+    #eac56f 100%
+  );
+}
+
+/* Warm golden page background */
+body {
+  background-color: #fffaf3;
+}
+
+/* Golden accents for section headings */
+.purv-home-hero h1,
+.purv-home-hero h2 {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* Soft cream and gold category cards */
+.purv-home-category-card {
+  border: 1px solid #ead5a6;
+  background: linear-gradient(145deg, #fffaf0, #f9edcf);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.purv-home-category-card:hover {
+  transform: translateY(-3px);
+  border-color: #c99c43;
+  box-shadow: 0 8px 20px rgba(151, 105, 35, 0.12);
+}
+
+/* Product cards: subtle warm border */
+.purv-home-product-card {
+  border: 1px solid #eadfc9;
+  background: #fffefa;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.purv-home-product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(92, 36, 40, 0.09);
+}
+
+/* Golden highlight for festival sections */
+.purv-home-festival {
+  border: 1px solid #e4c77f;
+  background: linear-gradient(
+    110deg,
+    #fff3d8 0%,
+    #fbe9d9 48%,
+    #fff0c5 100%
+  );
+}
+
+/* Golden accents for decorative lotus marks */
+.purv-lotus,
+.purv-decoration {
+  color: #b48632;
+}
+
+/* Compact homepage spacing */
+.purv-home-section {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* Keep product images tidy */
+.purv-home-product-image {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #fbf0dc;
+}
+
+.purv-home-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Smaller screens */
+@media (max-width: 768px) {
+  .purv-home-hero {
+    min-height: 180px;
+  }
+
+  .purv-home-section {
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 }
 
-/* Subtle animation for the search area */
-@keyframes purv-search-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(118, 35, 58, 0);
+/* =========================================
+   PURV HEADER: GOLD + BURGUNDY
+========================================= */
+
+.purv-header {
+  background: #fffaf1;
+  border-bottom: 1px solid #e8d2a0;
+  box-shadow: 0 2px 8px rgba(66, 21, 33, 0.06);
+}
+
+.purv-header-top {
+  background: linear-gradient(
+    110deg,
+    #fffaf1 0%,
+    #fff8e9 65%,
+    #fff0d1 100%
+  );
+  border-color: #e8d2a0;
+}
+
+.purv-header-search {
+  border-color: #e4d0a5;
+}
+
+.purv-header-search:focus-within {
+  border-color: #c69a43;
+  box-shadow: 0 0 0 3px rgba(215, 174, 88, 0.17);
+}
+
+.purv-category-nav {
+  background: linear-gradient(
+    100deg,
+    #421521 0%,
+    #641a2b 52%,
+    #501624 100%
+  );
+  border-top: 1px solid #d5ae58;
+  border-bottom: 2px solid #d5ae58;
+}
+
+.purv-category-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d5ae58 #641a2b;
+  -webkit-overflow-scrolling: touch;
+}
+
+.purv-category-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.purv-category-scroll::-webkit-scrollbar-track {
+  background: #641a2b;
+}
+
+.purv-category-scroll::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: #d5ae58;
+}
+
+.purv-nav-link {
+  position: relative;
+  color: #fffaf1;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
+}
+
+.purv-nav-link::after {
+  position: absolute;
+  right: 10px;
+  bottom: 4px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: #edcc7c;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+
+.purv-nav-link:hover,
+.purv-nav-link.purv-nav-active {
+  color: #ffdf91;
+  background: rgba(237, 204, 124, 0.08);
+}
+
+.purv-nav-link:hover::after,
+.purv-nav-link.purv-nav-active::after {
+  transform: scaleX(1);
+}
+
+.purv-mobile-menu {
+  background: #fffaf1;
+  border-bottom: 1px solid #e5c878;
+}
+
+.purv-mobile-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid #ead9b5;
+  border-radius: 9px;
+  background: #fffdf8;
+  padding: 10px 12px;
+  color: #641a2b;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.purv-mobile-menu-link:hover {
+  background: #fff0c9;
+  border-color: #d5ae58;
+}
+
+/* Compact navigation on very narrow screens */
+@media (max-width: 480px) {
+  .purv-category-scroll {
+    justify-content: flex-start;
+    gap: 0;
+    padding-right: 8px;
+    padding-left: 8px;
   }
 
-  50% {
-    box-shadow: 0 0 0 3px rgba(118, 35, 58, 0.035);
+  .purv-nav-link {
+    padding: 11px 10px;
+    font-size: 10px;
+  }
+
+  .purv-nav-link::after {
+    right: 8px;
+    left: 8px;
   }
 }
 
-.purv-search-animated {
-  animation: purv-search-glow 3s ease-in-out infinite;
+
+/* Categories grouped on the left; Contact alone on the right */
+
+.purv-category-nav {
+  width: 100%;
+  overflow: hidden;
+}
+
+.purv-category-scroll {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.purv-category-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.purv-nav-link {
+  flex: 0 0 auto;
+  padding: 12px 13px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* Push Contact to the far right */
+.purv-category-scroll .purv-contact-link {
+  margin-left: auto;
+  padding-right: 12px;
+  padding-left: 18px;
+}
+
+/* Tighter category spacing on medium screens */
+@media (max-width: 1100px) {
+  .purv-nav-link {
+    gap: 4px;
+    padding: 11px 8px;
+    font-size: 11px;
+  }
+
+  .purv-category-scroll .purv-contact-link {
+    margin-left: auto;
+    padding-left: 12px;
+  }
+}
+
+/* Compact spacing on mobile */
+@media (max-width: 600px) {
+  .purv-nav-link {
+    gap: 3px;
+    padding: 10px 5px;
+    font-size: 9px;
+  }
+
+  .purv-category-scroll .purv-contact-link {
+    padding-left: 8px;
+    padding-right: 5px;
+  }
+}
+
+/* =========================================
+   RESPONSIVE CATEGORY NAVIGATION
+   Categories LEFT | Contact RIGHT
+========================================= */
+
+.purv-category-nav {
+  width: 100%;
+  overflow: hidden;
+}
+
+.purv-category-scroll {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.purv-category-scroll .purv-nav-link {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 11px clamp(3px, 0.65vw, 10px);
+  gap: 4px;
+  white-space: nowrap;
+  font-size: clamp(9px, 0.78vw, 12px);
+}
+
+.purv-category-scroll .purv-nav-link svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* Keep Contact visible on the far right */
+.purv-category-scroll .purv-contact-link {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: clamp(5px, 0.8vw, 14px);
+  padding-right: 4px;
+}
+
+/* Medium screens */
+@media (max-width: 1100px) {
+  .purv-category-scroll .purv-nav-link {
+    padding-right: 4px;
+    padding-left: 4px;
+    gap: 3px;
+    font-size: 10px;
+  }
+
+  .purv-category-scroll .purv-contact-link {
+    padding-left: 6px;
+  }
+}
+
+/* Smaller screens */
+@media (max-width: 760px) {
+  .purv-category-scroll .purv-nav-link {
+    padding-right: 3px;
+    padding-left: 3px;
+    gap: 2px;
+    font-size: 8px;
+  }
+
+  .purv-category-scroll .purv-nav-link svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .purv-category-scroll .purv-contact-link {
+    padding-left: 4px;
+  }
+}
+
+/* Purv category page animations */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.purv-category-sidebar {
+  animation: fadeInUp 0.45s ease both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .purv-search-animated {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

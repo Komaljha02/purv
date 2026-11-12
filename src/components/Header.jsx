@@ -1,706 +1,511 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
-  ShoppingBag,
-  Heart,
+  ShoppingCart,
+  UserRound,
   Menu,
   X,
-  MapPin,
-  ChevronDown,
-  UserRound,
-  Sparkles,
-  Gift,
-  ArrowRight,
-  Flower2,
-  LocateFixed,
   Headset,
+  Home as HomeIcon,
+  Flame,
+  Flower2,
+  Sparkles,
+  Heart,
+  PackageCheck,
+  MapPin,
+  Grid2X2,
+  ChevronRight,
+  MessageCircle,
+  ArrowUpRight,
+  Gift,
 } from "lucide-react";
 
 import { useShop } from "../context/ShopContext";
-import { categories } from "../data/categories";
 
-const LOCATION_STORAGE_KEY = "purvDetectedLocation";
+const navItems = [
+  { label: "Daily Puja", slug: "daily-puja", icon: Flame },
+  {
+    label: "Puja Thali & Accessories",
+    slug: "puja-thali-accessories",
+    icon: Sparkles,
+  },
+  {
+    label: "Bhagwan Shringar",
+    slug: "bhagwan-shringar",
+    icon: Flower2,
+  },
+  { label: "Festival Kits", slug: "festival-kits", icon: Flame },
+  { label: "Havan Samagri", slug: "havan-samagri", icon: Sparkles },
+  { label: "Combos", slug: "combos-kits", icon: Gift },
+];
+
+const quickLinks = [
+  {
+    label: "Wishlist",
+    subtitle: "Your saved picks",
+    path: "/wishlist",
+    icon: Heart,
+  },
+  {
+    label: "My Orders",
+    subtitle: "Track your orders",
+    path: "/orders",
+    icon: PackageCheck,
+  },
+  {
+    label: "Delivery Address",
+    subtitle: "Manage addresses",
+    path: "/checkout/address",
+    icon: MapPin,
+  },
+  {
+    label: "My Profile",
+    subtitle: "Your account",
+    path: "/profile",
+    icon: UserRound,
+  },
+];
+
+const categoryBackgrounds = [
+  "from-[#fff0d9] to-[#fff8e9]",
+  "from-[#f7e6ec] to-[#fff4f4]",
+  "from-[#eee9f8] to-[#faf5ff]",
+  "from-[#fce9dc] to-[#fff6ec]",
+  "from-[#e9eee2] to-[#f7f9ee]",
+  "from-[#f8e6e4] to-[#fff5ed]",
+];
 
 export default function Header() {
   const [search, setSearch] = useState("");
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-
-  const searchPlaceholders = [
-    "Search for hair serum...",
-    "Search for gift hampers...",
-    "Search for Diwali décor...",
-    "Search for skincare essentials...",
-    "Search for the perfect gift...",
-    "Search for something special...",
-  ];
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setPlaceholderIndex(
-        (previous) => (previous + 1) % searchPlaceholders.length,
-      );
-    }, 1500);
-
-    return () => clearInterval(timer);
-  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [locationOpen, setLocationOpen] = useState(false);
 
-  const [detectedLocation, setDetectedLocation] = useState(() => {
-    try {
-      return localStorage.getItem(LOCATION_STORAGE_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
-
-  const [locationStatus, setLocationStatus] = useState("idle");
-  const [locationError, setLocationError] = useState("");
+  const categoryScrollRef = useRef(null);
 
   const navigate = useNavigate();
-  const currentLocation = useLocation();
+  const location = useLocation();
+  const { cartCount } = useShop();
 
-  const { cartCount, addresses, wishlist } = useShop();
-
-  const savedAddress =
-    addresses.length > 0 ? addresses[addresses.length - 1] : null;
-
-  const navLinks = [
-    { label: "Home", path: "/" },
-    { label: "Categories", path: "/categories" },
-    { label: "Wishlist", path: "/wishlist" },
-    { label: "My Orders", path: "/orders" },
-    { label: "Profile", path: "/profile" },
-    { label: "Delivery Address", path: "/checkout/address" },
-  ];
-
-  const addressLabel = savedAddress
-    ? [
-        savedAddress.house,
-        savedAddress.area,
-        savedAddress.city,
-        savedAddress.pincode,
-      ]
-        .filter(Boolean)
-        .join(", ")
-    : detectedLocation || "Add your delivery address";
-
-  const detectLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus("error");
-      setLocationError(
-        "Your browser does not support automatic location detection.",
-      );
-      return;
-    }
-
-    setLocationStatus("loading");
-    setLocationError("");
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-
-          const url = new URL("https://nominatim.openstreetmap.org/reverse");
-
-          url.searchParams.set("format", "jsonv2");
-          url.searchParams.set("lat", latitude);
-          url.searchParams.set("lon", longitude);
-          url.searchParams.set("zoom", "16");
-          url.searchParams.set("addressdetails", "1");
-
-          const response = await fetch(url.toString());
-
-          if (!response.ok) {
-            throw new Error("Reverse geocoding request failed.");
-          }
-
-          const data = await response.json();
-          const address = data.address || {};
-
-          const area =
-            address.suburb ||
-            address.neighbourhood ||
-            address.residential ||
-            address.quarter ||
-            address.city_district ||
-            address.village ||
-            address.town ||
-            address.city ||
-            "";
-
-          const city =
-            address.city ||
-            address.town ||
-            address.village ||
-            address.city_district ||
-            address.county ||
-            "";
-
-          const pincode = address.postcode || "";
-
-          const readableLocation =
-            [...new Set([area, city, pincode].filter(Boolean))].join(", ") ||
-            data.display_name ||
-            "";
-
-          if (!readableLocation) {
-            throw new Error("No readable address was returned.");
-          }
-
-          setDetectedLocation(readableLocation);
-          setLocationStatus("success");
-
-          try {
-            localStorage.setItem(LOCATION_STORAGE_KEY, readableLocation);
-          } catch {
-            // Continue if browser storage is unavailable.
-          }
-        } catch {
-          setLocationStatus("error");
-          setLocationError(
-            "We couldn't retrieve your address. Please try again or enter it manually.",
-          );
-        }
-      },
-      (error) => {
-        setLocationStatus("error");
-
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationError(
-            "Location permission was denied. Enable it in your browser settings or enter your address manually.",
-          );
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          setLocationError(
-            "Your current location is unavailable. Please try again.",
-          );
-        } else if (error.code === error.TIMEOUT) {
-          setLocationError(
-            "Location detection took too long. Please try again.",
-          );
-        } else {
-          setLocationError(
-            "We couldn't detect your location. Please try again.",
-          );
-        }
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 15000,
-        maximumAge: 300000,
-      },
-    );
-  }, []);
-
-  // Ask for browser location permission when the header first mounts.
+  // Close the drawer whenever the customer changes pages.
   useEffect(() => {
-    detectLocation();
-  }, [detectLocation]);
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  // Prevent the page behind the drawer from scrolling.
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
 
   const handleSearch = (event) => {
     event.preventDefault();
 
     const query = search.trim();
-
     if (!query) return;
 
     navigate(`/search?q=${encodeURIComponent(query)}`);
+    setSearch("");
     setMenuOpen(false);
-    setLocationOpen(false);
   };
 
-  function closeMenu() {
-    setMenuOpen(false);
-  }
+  const isActive = (path) =>
+    path === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(path);
 
-  function toggleLocation() {
-    setLocationOpen((previous) => !previous);
-    setMenuOpen(false);
-  }
-
-  function isActive(path) {
-    if (path === "/") return currentLocation.pathname === "/";
-    if (path === "/categories") {
-      return currentLocation.pathname === path;
-    }
-
-    return (
-      currentLocation.pathname === path ||
-      currentLocation.pathname.startsWith(`${path}/`)
-    );
-  }
+  const scrollCategories = () => {
+    categoryScrollRef.current?.scrollBy({
+      left: 220,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <>
-      <div className="sticky top-0 z-50 w-full bg-white">
-        {/* FESTIVE ANNOUNCEMENT */}
-        <div className="relative overflow-hidden bg-[#421521] text-[#fff4df]">
-          <div className="pointer-events-none absolute -left-6 -top-10 h-24 w-24 rounded-full border border-[#f6c86c]/20" />
-          <div className="pointer-events-none absolute -right-4 -top-10 h-24 w-24 rounded-full border border-[#f6c86c]/20" />
-
-          <div className="relative mx-auto flex min-h-9 max-w-[1500px] items-center justify-center gap-2 px-3 py-2 text-center">
-            <Sparkles size={13} className="shrink-0 text-[#f6bd65]" />
-
-            <p className="text-[10px] font-semibold tracking-wide sm:text-xs">
-              A little more joy, a little more{" "}
-              <span className="font-extrabold text-[#ffd48c]">Purv</span>
-              <span className="hidden sm:inline">
-                {" "}
-                · Thoughtful finds for every celebration
-              </span>
-            </p>
-
-            <Sparkles size={13} className="shrink-0 text-[#f6bd65]" />
-          </div>
-        </div>
-
-        {/* MAIN HEADER */}
-        <header className="border-b border-[#eee1d7] bg-[#fffdf9]/95 shadow-[0_5px_24px_rgba(66,21,33,0.055)] backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1500px] items-center gap-2 px-3 py-3 sm:gap-4 sm:px-5 lg:gap-6 lg:px-8">
-            {/* MOBILE MENU */}
+      <header className="purv-header sticky top-0 z-[100] w-full bg-white shadow-md">
+        {/* TOP HEADER */}
+        <div className="purv-header-top border-b border-[#f0e3d9] bg-white">
+          <div className="mx-auto flex min-h-[62px] max-w-[1500px] items-center gap-2 px-3 py-2 sm:min-h-[76px] sm:gap-4 sm:px-6 lg:gap-6 lg:px-8">
+            {/* MOBILE MENU BUTTON */}
             <button
               type="button"
-              onClick={() => {
-                setMenuOpen((previous) => !previous);
-                setLocationOpen(false);
-              }}
-              className="flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-[#54251f] transition hover:bg-[#f8eae3] md:hidden"
-              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
               aria-expanded={menuOpen}
+              className="grid h-9 w-8 shrink-0 place-items-center text-[#76233a] md:hidden"
             >
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+              <Menu size={23} />
             </button>
 
-            {/* BRAND */}
+            {/* LOGO */}
             <Link
               to="/"
-              onClick={closeMenu}
-              className="group flex shrink-0 items-center gap-2.5"
-              aria-label="Purv home"
+              onClick={() => setMenuOpen(false)}
+              className="group flex shrink-0 items-center gap-1.5 sm:gap-3"
+              aria-label="Purv Puja Samagri home"
             >
-              <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#76233a] to-[#421521] text-[#ffe0a4] shadow-[0_5px_14px_rgba(118,35,58,0.18)] transition duration-300 group-hover:-rotate-6 group-hover:scale-105 sm:h-12 sm:w-12">
-                <Flower2 size={25} strokeWidth={1.7} />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#fffdf9] bg-[#ed9b28]" />
-              </span>
+              <svg
+                viewBox="0 0 80 62"
+                aria-hidden="true"
+                className="h-8 w-9 shrink-0 sm:h-12 sm:w-[58px]"
+              >
+                <g
+                  fill="#edcc7c"
+                  stroke="#76233a"
+                  strokeWidth="2.2"
+                  strokeLinejoin="round"
+                >
+                  <path d="M40 54C22 48 16 34 20 17C31 22 39 35 40 54Z" />
+                  <path d="M40 54C58 48 64 34 60 17C49 22 41 35 40 54Z" />
+                  <path d="M40 54C28 39 30 19 40 5C50 19 52 39 40 54Z" />
+                  <path d="M40 54C18 55 7 45 4 33C19 33 31 40 40 54Z" />
+                  <path d="M40 54C62 55 73 45 76 33C61 33 49 40 40 54Z" />
+                </g>
+                <path
+                  d="M20 57H60"
+                  stroke="#a77a32"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
 
               <span className="flex flex-col leading-none">
-                <span className="font-serif text-[29px] font-bold tracking-[-1.8px] text-[#54251f] transition group-hover:text-[#8b3026] sm:text-4xl">
-                  purv<span className="text-[#e99535]">.</span>
+                <span className="font-serif text-[24px] font-bold tracking-[-1.4px] text-[#541522] sm:text-[37px] sm:tracking-[-2px]">
+                  PURV
                 </span>
-
-                <span className="mt-1 hidden text-[8px] font-extrabold tracking-[1.8px] text-[#947c70] sm:block">
-                  BEAUTY · RITUALS · GIFTING
+                <span className="mt-0.5 text-[6px] font-bold tracking-[1.2px] text-[#6b4936] sm:text-[10px] sm:tracking-[2.1px]">
+                  PUJA SAMAGRI
                 </span>
               </span>
             </Link>
 
-            {/* DELIVERY LOCATION */}
-            <button
-              type="button"
-              onClick={toggleLocation}
-              className="hidden min-w-[125px] max-w-[200px] shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-left transition hover:bg-[#f9eee5] lg:flex"
-              aria-expanded={locationOpen}
-              aria-label="View delivery location"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f8e8df] text-[#8b3026]">
-                <MapPin size={19} />
-              </span>
-
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1 text-[11px] font-extrabold text-[#54251f]">
-                  Deliver to
-                  <ChevronDown
-                    size={13}
-                    className={`transition-transform ${
-                      locationOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </span>
-
-                <span className="mt-1 block truncate text-xs text-[#927d71]">
-                  {savedAddress
-                    ? savedAddress.city ||
-                      savedAddress.pincode ||
-                      "Saved address"
-                    : locationStatus === "loading"
-                      ? "Detecting location..."
-                      : detectedLocation || "Select your location"}
-                </span>
-              </span>
-            </button>
+            {/* TAGLINE */}
+            <div className="hidden h-12 shrink-0 items-center border-l border-[#d4ad5e] pl-4 lg:flex">
+  <p className="font-serif text-[12px] font-semibold italic leading-5 text-[#76233a]">
+     || Bhakti Ka Har Pal  ||
+    <br />
+    || Purv Ke Sang  ||
+  </p>
+</div>
 
             {/* SEARCH */}
             <form
               onSubmit={handleSearch}
               role="search"
-              className="group flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[#eadfd5] bg-[#f8f5f0] px-3 transition duration-200 focus-within:border-[#bb7967] focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(139,48,38,0.07)] sm:h-12 sm:px-4"
+              className="purv-header-search ml-auto flex h-9 min-w-0 max-w-[460px] flex-1 items-center rounded-full border border-[#eadcc7] bg-white pl-3 pr-1 shadow-sm transition focus-within:border-[#c79a55] sm:h-11 sm:pl-4"
             >
-              <Search
-                size={19}
-                className="shrink-0 text-[#947d70] transition group-focus-within:text-[#8b3026]"
-              />
-
               <input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder={search ? "" : searchPlaceholders[placeholderIndex]}
-                aria-label="Search products"
-                className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-xs text-[#422b27] outline-none placeholder:text-[#a39287] focus:outline-none focus:ring-0 sm:text-sm"
+                placeholder="Search puja items..."
+                aria-label="Search puja items"
+                className="min-w-0 flex-1 bg-transparent text-[10px] text-[#3f2927] outline-none placeholder:text-[#93837a] sm:text-sm"
               />
-
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="shrink-0 rounded-full p-1 text-[#8b766b] transition hover:bg-[#f1e6dd]"
-                  aria-label="Clear search"
-                >
-                  <X size={15} />
-                </button>
-              )}
 
               <button
                 type="submit"
-                aria-label="Submit search"
-                className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#76233a] text-white transition hover:bg-[#421521] sm:flex"
+                aria-label="Search"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#76233a] text-white transition hover:bg-[#421521] sm:h-9 sm:w-9"
               >
-                <ArrowRight size={16} />
+                <Search size={16} />
               </button>
             </form>
 
-            {/* GIFT FINDER */}
-            <Link
-              to="/gift-finder"
-              className={`hidden shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 transition xl:flex ${
-                isActive("/gift-finder")
-                  ? "bg-[#76233a] text-white"
-                  : "bg-[#fff0d9] text-[#843d2d] hover:bg-[#ffe4b6]"
-              }`}
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/70">
-                <Gift size={18} />
-              </span>
-
-              <span>
-                <span className="block text-xs font-extrabold">
-                  Find a Gift
-                </span>
-                <span className="mt-0.5 block text-[9px] opacity-75">
-                  Made personal
-                </span>
-              </span>
-            </Link>
-
-            {/* PROFILE */}
+            {/* PROFILE - DESKTOP */}
             <Link
               to="/profile"
-              aria-label="My profile"
-              className="hidden shrink-0 flex-col items-center gap-1 rounded-xl px-2 py-2 text-[#6b554b] transition hover:bg-[#f9eee5] hover:text-[#8b3026] sm:flex"
+              className="hidden shrink-0 flex-col items-center gap-1 px-1 text-[#a77a32] transition hover:text-[#76233a] sm:flex"
             >
-              <UserRound size={21} />
-              <span className="text-[10px] font-semibold">Profile</span>
-            </Link>
-
-            {/* WISHLIST */}
-            <Link
-              to="/wishlist"
-              aria-label={`Wishlist, ${wishlist.length} saved products`}
-              className="relative hidden shrink-0 flex-col items-center gap-1 rounded-xl px-2 py-2 text-[#6b554b] transition hover:bg-[#f9eee5] hover:text-[#8b3026] sm:flex"
-            >
-              <Heart size={21} />
-
-              {wishlist.length > 0 && (
-                <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c4434b] px-1 text-[9px] font-extrabold text-white">
-                  {wishlist.length}
-                </span>
-              )}
-
-              <span className="text-[10px] font-semibold">Wishlist</span>
+              <UserRound size={22} strokeWidth={1.7} />
+              <span className="whitespace-nowrap text-[9px] font-medium text-[#624438] sm:text-[10px]">
+                Login / Sign Up
+              </span>
             </Link>
 
             {/* CART */}
             <Link
               to="/cart"
-              aria-label={`Shopping cart, ${cartCount} items`}
-              className="relative flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-[#76233a] to-[#9e3546] px-2.5 text-white shadow-[0_5px_14px_rgba(118,35,58,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(118,35,58,0.24)] sm:h-12 sm:gap-2 sm:px-4"
+              className="relative flex shrink-0 flex-col items-center gap-1 px-1 text-[#a77a32] transition hover:text-[#76233a]"
+              aria-label={`Cart with ${cartCount} items`}
             >
-              <ShoppingBag size={19} />
-              <span className="hidden text-sm font-bold sm:inline">Cart</span>
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ffd88e] px-1 text-[10px] font-extrabold text-[#54251f]">
-                {cartCount}
+              <span className="relative">
+                <ShoppingCart size={21} strokeWidth={1.8} />
+                <span className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-[#76233a] px-1 text-[9px] font-bold text-white">
+                  {cartCount}
+                </span>
+              </span>
+              <span className="text-[9px] font-medium text-[#624438] sm:text-[10px]">
+                Cart
               </span>
             </Link>
           </div>
+        </div>
 
-          {/* ADDRESS PANEL */}
-          {locationOpen && (
-            <div className="border-t border-[#eee1d7] bg-white px-4 py-5 shadow-lg">
-              <div className="mx-auto flex max-w-[1450px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f8e8df] text-[#8b3026]">
-                    <MapPin size={21} />
-                  </span>
+        {/* HORIZONTAL CATEGORY NAVIGATION */}
+        <nav
+          aria-label="Shop categories"
+          className="w-full border-b border-[#76233a] bg-[#76233a]"
+        >
+          <div className="relative mx-auto max-w-[1500px]">
+            <div
+              ref={categoryScrollRef}
+              className="flex items-center gap-7 overflow-x-auto scroll-smooth px-4 py-3 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-9 sm:px-6 md:w-full md:gap-6 md:px-5 md:pr-5 lg:gap-9"
+            >
+              {/* HOME */}
+              <Link
+                to="/"
+                className={`relative flex shrink-0 flex-col items-center gap-1.5 px-1 pb-1 text-[11px] font-bold text-white transition ${
+                  isActive("/")
+                    ? "text-white"
+                    : "text-white/90 hover:text-[#f5d68e]"
+                }`}
+              >
+                <HomeIcon size={20} />
+                Home
+                {isActive("/") && (
+                  <span className="absolute -bottom-3 left-0 h-[3px] w-full rounded-full bg-white" />
+                )}
+              </Link>
 
-                  <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-[#54251f]">
-                      Your delivery location
-                    </p>
-
-                    <p className="mt-1 max-w-xl break-words text-xs leading-5 text-[#927d71]">
-                      {addressLabel}
-                    </p>
-
-                    {locationStatus === "loading" && (
-                      <p className="mt-2 text-xs text-[#8b3026]">
-                        Finding your location...
-                      </p>
-                    )}
-
-                    {locationStatus === "error" && (
-                      <p className="mt-2 max-w-xl text-xs leading-5 text-red-600">
-                        {locationError}
-                      </p>
-                    )}
-
-                    <p className="mt-2 text-[10px] leading-5 text-[#a39287]">
-                      Your detected area is approximate. Confirm your full
-                      address and PIN code during checkout.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={detectLocation}
-                      disabled={locationStatus === "loading"}
-                      className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#eadfd5] px-3 py-2 text-xs font-bold text-[#76233a] transition hover:bg-[#fff4e8] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <LocateFixed size={15} />
-                      {locationStatus === "loading"
-                        ? "Detecting..."
-                        : "Detect my location"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 sm:shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLocationOpen(false);
-                      navigate("/checkout/address");
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#76233a] px-4 py-3 text-xs font-bold text-white transition hover:bg-[#421521]"
-                  >
-                    {savedAddress ? "Manage addresses" : "Add address"}
-                    <ArrowRight size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLocationOpen(false)}
-                    className="rounded-xl border border-[#eadfd5] px-4 py-3 text-xs font-semibold text-[#6b554b] transition hover:bg-[#fff8f1]"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DESKTOP CATEGORY NAVIGATION */}
-          <nav
-            aria-label="Main navigation"
-            className="hidden border-t border-[#f1e8df] md:block"
-          >
-            <div className="mx-auto flex max-w-[1500px] items-center gap-6 overflow-x-auto px-5 py-3 lg:gap-8 lg:px-8">
-              {navLinks.map((item) => {
-                const active = isActive(item.path);
+              {/* CATEGORY LINKS */}
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = location.pathname === `/category/${item.slug}`;
 
                 return (
                   <Link
-                    key={item.label}
-                    to={item.path}
-                    className={`relative shrink-0 whitespace-nowrap py-1 text-xs font-bold transition ${
+                    key={item.slug}
+                    to={`/category/${item.slug}`}
+                    className={`relative flex shrink-0 flex-col items-center gap-1.5 px-1 pb-1 text-[11px] font-bold text-white transition ${
                       active
-                        ? "text-[#8b3026]"
-                        : "text-[#78645a] hover:text-[#8b3026]"
+                        ? "text-white"
+                        : "text-white/90 hover:text-[#f5d68e]"
                     }`}
                   >
-                    {item.label}
+                    <Icon size={20} strokeWidth={1.8} />
+                    <span className="whitespace-nowrap">{item.label}</span>
 
                     {active && (
-                      <span className="absolute -bottom-3 left-0 right-0 h-[3px] rounded-full bg-gradient-to-r from-[#76233a] to-[#ed9b28]" />
+                      <span className="absolute -bottom-3 left-0 h-[3px] w-full rounded-full bg-white" />
                     )}
                   </Link>
                 );
               })}
 
-              <a
-                href="https://wa.me/918810628225"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Contact us on WhatsApp"
-                title="Chat with us on WhatsApp"
-                className="ml-auto flex shrink-0 items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-xs font-bold text-green-700 transition hover:bg-green-100"
-              >
-                <Headset size={18} />
-                Contact Us
-              </a>
-
+              {/* CONTACT */}
               <Link
-                to="/gift-finder"
-                className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-[#f1d4a7] bg-[#fff3de] px-3.5 py-2 text-[10px] font-extrabold text-[#843d2d] transition hover:border-[#e6b96f] hover:bg-[#ffe6b9]"
+                to="/contact"
+                className={`relative flex shrink-0 flex-col items-center gap-1.5 px-1 pb-1 text-[11px] font-bold text-white transition md:ml-auto md:mr-3 ${
+                  isActive("/contact")
+                    ? "text-white"
+                    : "text-white/90 hover:text-[#f5d68e]"
+                }`}
               >
-                <Sparkles size={13} />
-                DISCOVER YOUR GIFT
-                <ArrowRight size={12} />
+                <Headset size={20} />
+                Contact
+                {isActive("/contact") && (
+                  <span className="absolute -bottom-3 left-0 h-[3px] w-full rounded-full bg-white" />
+                )}
               </Link>
             </div>
-          </nav>
 
-          {/* MOBILE MENU */}
-          {menuOpen && (
-            <nav
-              aria-label="Mobile navigation"
-              className="max-h-[70vh] overflow-y-auto border-t border-[#eee1d7] bg-[#fffdf9] p-4 shadow-xl md:hidden"
+            {/* SCROLL RIGHT BUTTON */}
+            <button
+              type="button"
+              aria-label="Scroll categories right"
+              onClick={scrollCategories}
+              className="absolute right-1 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-[#eadcc7] bg-white text-[#76233a] shadow-md transition hover:bg-[#fff0e4] md:hidden"
             >
-              <div className="mb-4 flex items-center justify-between">
+              <ChevronRight size={19} />
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      {/* MOBILE SLIDE-IN MENU */}
+      <div
+        className={`fixed inset-0 z-[200] md:hidden ${
+          menuOpen
+            ? "pointer-events-auto visible"
+            : "pointer-events-none invisible"
+        }`}
+        aria-hidden={!menuOpen}
+      >
+        {/* BACKDROP */}
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={() => setMenuOpen(false)}
+          className={`absolute inset-0 h-full w-full bg-[#241015]/50 transition-opacity duration-300 ${
+            menuOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+
+        {/* DRAWER */}
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Purv shopping menu"
+          className={`absolute left-0 top-0 flex h-[100dvh] w-[min(88vw,390px)] flex-col overflow-hidden bg-[#fffaf5] shadow-2xl transition-transform duration-300 ease-out ${
+            menuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+
+          {/* DRAWER CONTENT */}
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-5 pt-5">
+            {/* QUICK ACCESS */}
+            <section>
+              <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <p className="font-serif text-xl font-bold text-[#54251f]">
-                    Explore Purv
+                  <p className="text-[10px] font-bold uppercase tracking-[1.7px] text-[#a77a32]">
+                    Your shortcuts
                   </p>
-                  <p className="mt-1 text-[11px] text-[#927d71]">
-                    Little joys for every celebration
+                  <h3 className="mt-1 font-serif text-lg font-bold text-[#421521]">
+                    Everything in one place
+                  </h3>
+                </div>
+                <Sparkles size={20} className="text-[#c28b3e]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {quickLinks.map((item, index) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMenuOpen(false)}
+                      className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[#efdfcc] bg-white p-3 shadow-[0_2px_8px_rgba(91,45,35,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d8b77b] hover:shadow-md"
+                    >
+                      <span
+                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
+                          index === 0
+                            ? "bg-[#f9e7ed] text-[#76233a]"
+                            : index === 1
+                              ? "bg-[#fff0d9] text-[#a66a22]"
+                              : index === 2
+                                ? "bg-[#eaf0e4] text-[#59734b]"
+                                : "bg-[#f1eafb] text-[#795b9d]"
+                        }`}
+                      >
+                        <Icon size={19} />
+                      </span>
+
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-bold text-[#421521]">
+                          {item.label}
+                        </span>
+                        <span className="mt-1 block truncate text-[9px] text-[#99857b]">
+                          {item.subtitle}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* SHOP BY CATEGORY */}
+            <section>
+              <div className="mb-3 flex items-end justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[1.7px] text-[#a77a32]">
+                    Discover Purv
                   </p>
+                  <h3 className="mt-1 font-serif text-lg font-bold text-[#421521]">
+                    Shop by category
+                  </h3>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={closeMenu}
-                  className="rounded-xl p-2 text-[#76594b] hover:bg-[#f8eae3]"
-                  aria-label="Close navigation"
+                <Link
+                  to="/categories"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-[#76233a]"
                 >
-                  <X size={20} />
-                </button>
+                  View all
+                  <ArrowUpRight size={13} />
+                </Link>
               </div>
 
-              <Link
-                to="/gift-finder"
-                onClick={closeMenu}
-                className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#76233a] to-[#a44348] p-4 text-white shadow-sm"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                  <Gift size={23} />
-                </span>
+              <div className="grid grid-cols-2 gap-2.5">
+                {navItems.map((item, index) => {
+                  const Icon = item.icon;
+                  const active = location.pathname === `/category/${item.slug}`;
 
-                <span className="flex-1">
-                  <span className="block text-sm font-extrabold">
-                    Find the perfect gift
-                  </span>
-                  <span className="mt-1 block text-[11px] text-white/75">
-                    Personalised festive recommendations
-                  </span>
-                </span>
-
-                <ArrowRight size={18} />
-              </Link>
-
-              {/* MOBILE LOCATION */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setLocationOpen(true);
-                }}
-                className="mb-4 flex w-full items-center gap-3 rounded-xl bg-[#f8e8df] p-3 text-left text-xs font-bold text-[#8c3328]"
-              >
-                <MapPin size={18} />
-
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-semibold text-[#927d71]">
-                    Deliver to
-                  </span>
-                  <span className="mt-1 block truncate">
-                    {savedAddress
-                      ? savedAddress.city ||
-                        savedAddress.pincode ||
-                        "Saved address"
-                      : locationStatus === "loading"
-                        ? "Detecting location..."
-                        : detectedLocation || "Select your location"}
-                  </span>
-                </span>
-
-                <ChevronDown size={15} />
-              </button>
-
-              <div className="grid grid-cols-2 gap-2">
-                {navLinks.map((item) => (
-                  <Link
-                    key={item.label}
-                    to={item.path}
-                    onClick={closeMenu}
-                    className={`rounded-xl border p-3 text-xs font-bold transition ${
-                      isActive(item.path)
-                        ? "border-[#e8c8b8] bg-[#f8e8df] text-[#8b3026]"
-                        : "border-[#f0e5db] bg-white text-[#674b3c] hover:bg-[#fff4e8]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-
-                {categories
-                  .filter(
-                    (category) =>
-                      !navLinks.some(
-                        (item) => item.path === `/category/${category.slug}`,
-                      ),
-                  )
-                  .map((category) => (
+                  return (
                     <Link
-                      key={category.id}
-                      to={`/category/${category.slug}`}
-                      onClick={closeMenu}
-                      className="rounded-xl border border-[#f0e5db] bg-white p-3 text-xs font-semibold text-[#674b3c] transition hover:bg-[#fff4e8]"
+                      key={item.slug}
+                      to={`/category/${item.slug}`}
+                      onClick={() => setMenuOpen(false)}
+                      className={`group relative flex min-h-[83px] items-center gap-2.5 overflow-hidden rounded-2xl border p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                        active
+                          ? "border-[#76233a] bg-[#f8e8ed]"
+                          : "border-[#efdfcc] bg-white"
+                      }`}
                     >
-                      {category.name}
+                      <span
+                        className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br ${categoryBackgrounds[index]} text-[#76233a]`}
+                      >
+                        <Icon size={21} strokeWidth={1.8} />
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] font-bold leading-4 text-[#54202b]">
+                          {item.label}
+                        </span>
+                        <span className="mt-1 flex items-center gap-1 text-[9px] font-medium text-[#a77a32]">
+                          Explore
+                          <ChevronRight size={11} />
+                        </span>
+                      </span>
                     </Link>
-                  ))}
+                  );
+                })}
               </div>
+            </section>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Link
-                  to="/wishlist"
-                  onClick={closeMenu}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#fbe9e8] p-3 text-xs font-bold text-[#92372e]"
-                >
-                  <Heart size={16} />
-                  Wishlist ({wishlist.length})
-                </Link>
-
-                <Link
-                  to="/orders"
-                  onClick={closeMenu}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#fff0dc] p-3 text-xs font-bold text-[#8a4c24]"
-                >
-                  <ShoppingBag size={16} />
-                  My orders
-                </Link>
-
-                <Link
-                  to="/profile"
-                  onClick={closeMenu}
-                  className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-[#eee1d7] p-3 text-xs font-bold text-[#674b3c]"
-                >
-                  <UserRound size={16} />
-                  My profile
-                </Link>
+            {/* CONTACT CARD */}
+            <Link
+              to="/contact"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center justify-between rounded-2xl border border-[#ead5bd] bg-gradient-to-r from-[#fff0d6] via-[#fff7e9] to-[#fbe9e7] p-3.5 transition hover:shadow-md"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-[#76233a] shadow-sm">
+                  <Headset size={19} />
+                </span>
+                <span>
+                  <span className="block text-xs font-bold text-[#54202b]">
+                    Need a little help?
+                  </span>
+                  <span className="mt-1 block text-[10px] text-[#8d7166]">
+                    We're happy to assist you
+                  </span>
+                </span>
               </div>
-            </nav>
-          )}
-        </header>
+              <ChevronRight size={18} className="text-[#76233a]" />
+            </Link>
+          </div>
+
+          {/* FIXED WHATSAPP FOOTER */}
+          <div className="shrink-0 border-t border-[#efdfcc] bg-white px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+            <a
+              href="https://wa.me/918810628225"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#76233a] px-4 py-3 text-xs font-bold text-white shadow-md transition hover:bg-[#421521]"
+            >
+              <MessageCircle size={17} />
+              Chat with us on WhatsApp
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
+        </aside>
       </div>
     </>
   );
