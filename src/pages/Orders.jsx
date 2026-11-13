@@ -6,6 +6,9 @@ import {
   Package,
   RefreshCw,
   CalendarDays,
+  Truck,
+  Zap,
+  Clock,
 } from "lucide-react";
 
 import Header from "../components/Header";
@@ -16,8 +19,23 @@ function money(value) {
   return `₹${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
+function formatDeliveryDate(date) {
+  if (!date) return "";
+
+  const parsedDate = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) return date;
+
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function Orders() {
   const { orders } = useShop();
+
   const [liveOrders, setLiveOrders] = useState(orders);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,7 +58,6 @@ export default function Orders() {
 
             if (error) throw error;
 
-            // Use the latest Supabase order when available.
             return data
               ? { ...localOrder, ...data }
               : localOrder;
@@ -63,12 +80,13 @@ export default function Orders() {
   }, [orders]);
 
   useEffect(() => {
+    setLiveOrders(orders);
     refreshOrders();
 
     const interval = setInterval(refreshOrders, 15000);
 
     return () => clearInterval(interval);
-  }, [refreshOrders]);
+  }, [orders, refreshOrders]);
 
   return (
     <>
@@ -77,6 +95,7 @@ export default function Orders() {
       <main className="min-h-screen bg-[#fffaf4] px-4 py-8 md:px-10">
         <div className="mx-auto max-w-5xl">
 
+          {/* PAGE HEADER */}
           <Link
             to="/"
             className="inline-flex items-center gap-2 text-sm text-[#8b3a2b]"
@@ -111,6 +130,7 @@ export default function Orders() {
             </button>
           </div>
 
+          {/* EMPTY STATE */}
           {liveOrders.length === 0 ? (
             <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
               <Package
@@ -134,6 +154,7 @@ export default function Orders() {
               </Link>
             </div>
           ) : (
+            /* ORDER LIST */
             <div className="space-y-4">
               {[...liveOrders].reverse().map((order) => {
                 const items = Array.isArray(order.items)
@@ -142,11 +163,31 @@ export default function Orders() {
 
                 const status = order.status || "Order placed";
 
+                const deliveryType =
+                  order.delivery_type ||
+                  order.deliveryType ||
+                  "scheduled";
+
+                const isFastDelivery = deliveryType === "fast";
+
+                const deliveryDate =
+                  order.delivery_date || order.deliveryDate;
+
+                const deliveryTimeSlot =
+                  order.delivery_time_slot ||
+                  order.deliveryTimeSlot;
+
+                const deliveryEstimate =
+                  order.delivery_estimate ||
+                  order.deliveryEstimate ||
+                  "Within 1 hour";
+
                 return (
                   <article
                     key={order.id}
                     className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
                   >
+                    {/* ORDER HEADER */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-xs text-gray-500">
@@ -154,11 +195,14 @@ export default function Orders() {
                         </p>
 
                         <h2 className="mt-1 font-bold text-[#54251f]">
-                          {order.order_number || order.orderNumber || order.id}
+                          {order.order_number ||
+                            order.orderNumber ||
+                            order.id}
                         </h2>
 
                         <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                           <CalendarDays size={14} />
+
                           {order.created_at || order.createdAt
                             ? new Date(
                                 order.created_at || order.createdAt
@@ -172,6 +216,54 @@ export default function Orders() {
                       </span>
                     </div>
 
+                    {/* DELIVERY OPTION */}
+                    <div className="mt-5">
+                      {isFastDelivery ? (
+                        <div className="flex items-center gap-3 rounded-xl border border-green-100 bg-green-50 p-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                            <Zap size={20} className="text-green-700" />
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-bold text-green-800">
+                              Fast Delivery
+                            </p>
+
+                            <p className="mt-1 flex items-center gap-1 text-xs text-green-700">
+                              <Clock size={13} />
+                              Expected: {deliveryEstimate}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 rounded-xl border border-rose-100 bg-[#fff8ef] p-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f8e8e5]">
+                            <CalendarDays
+                              size={20}
+                              className="text-[#76233a]"
+                            />
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-bold text-[#54251f]">
+                              Scheduled Delivery
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-600">
+                              {deliveryDate
+                                ? formatDeliveryDate(deliveryDate)
+                                : "Date not available"}
+
+                              {deliveryTimeSlot
+                                ? ` • ${deliveryTimeSlot}`
+                                : ""}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ORDER TOTAL AND TRACKING */}
                     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
                       <div>
                         <p className="text-sm text-gray-500">

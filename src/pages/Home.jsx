@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -16,6 +15,7 @@ import {
 import Header from "../components/Header";
 import { supabase } from "../lib/supabase";
 import { useShop } from "../context/ShopContext";
+import ProductCard from "../components/ProductCard";
 
 // Fallback images are used only when a category has no image_url in Supabase.
 const categoryFallbackImages = {
@@ -34,7 +34,6 @@ const categoryFallbackImages = {
   "dhanteras-essentials":
     "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=500&q=80",
 };
-
 
 function LotusMark({ className = "", size = 24 }) {
   return (
@@ -68,23 +67,18 @@ function LotusMark({ className = "", size = 24 }) {
   );
 }
 
-const money = (value) =>
-  `₹${Number(value || 0).toLocaleString("en-IN")}`;
+const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 function SectionTitle({ title, subtitle, link = "/categories" }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
       <div>
-       
-
         <h2 className="font-serif text-xl font-bold text-[#641a2b] sm:text-2xl lg:text-3xl">
           {title}
         </h2>
 
         {subtitle && (
-          <p className="mt-1 text-xs text-stone-500 sm:text-sm">
-            {subtitle}
-          </p>
+          <p className="mt-1 text-xs text-stone-500 sm:text-sm">{subtitle}</p>
         )}
       </div>
 
@@ -102,15 +96,10 @@ function CategoryCard({ category }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   const image =
-    category.image_url ||
-    categoryFallbackImages[category.slug] ||
-    "";
+    category.image_url || categoryFallbackImages[category.slug] || "";
 
   return (
-    <Link
-      to={`/category/${category.slug}`}
-      className="group min-w-0"
-    >
+    <Link to={`/category/${category.slug}`} className="group min-w-0">
       <div className="relative aspect-square overflow-hidden rounded-xl border border-[#eee0d0] bg-[#f8ead9] sm:rounded-2xl">
         {image && !imageFailed ? (
           <img
@@ -147,16 +136,12 @@ function ProductTile({ product, onAdd }) {
   const [added, setAdded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const image =
-    product.image_url ||
-    product.image ||
-    product.imageUrl ||
-    "";
+  const image = product.image_url || product.image || product.imageUrl || "";
 
   const price = Number(product.price || 0);
 
   const originalPrice = Number(
-    product.original_price ?? product.originalPrice ?? 0
+    product.original_price ?? product.originalPrice ?? 0,
   );
 
   const discount =
@@ -238,9 +223,7 @@ function ProductTile({ product, onAdd }) {
           type="button"
           onClick={handleAdd}
           className={`mt-2 flex min-h-8 w-full items-center justify-center gap-1 rounded-md px-1.5 py-2 text-[10px] font-bold text-white transition sm:min-h-9 sm:text-xs ${
-            added
-              ? "bg-green-700"
-              : "bg-[#791d30] hover:bg-[#531421]"
+            added ? "bg-green-700" : "bg-[#791d30] hover:bg-[#531421]"
           }`}
         >
           <ShoppingCart size={13} />
@@ -320,7 +303,7 @@ export default function Home() {
         },
         () => {
           loadCategories();
-        }
+        },
       )
       .subscribe();
 
@@ -341,10 +324,7 @@ export default function Home() {
     return () => {
       active = false;
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -388,7 +368,6 @@ export default function Home() {
     };
   }, []);
 
-
   // Load the homepage offers configuration managed from the admin dashboard.
   useEffect(() => {
     let active = true;
@@ -397,7 +376,9 @@ export default function Home() {
       try {
         const { data, error } = await supabase
           .from("homepage_offer_settings")
-          .select("title, subtitle, mode, is_enabled, product_ids, view_all_link")
+          .select(
+            "title, subtitle, mode, is_enabled, product_ids, view_all_link",
+          )
           .eq("id", 1)
           .maybeSingle();
 
@@ -409,13 +390,16 @@ export default function Home() {
             subtitle: data.subtitle || "",
             mode: data.mode === "manual" ? "manual" : "automatic",
             is_enabled: data.is_enabled !== false,
-            product_ids: Array.isArray(data.product_ids) ? data.product_ids : [],
+            product_ids: Array.isArray(data.product_ids)
+              ? data.product_ids
+              : [],
             view_all_link: data.view_all_link || "/categories",
           });
         }
       } catch (error) {
         console.error("Error loading homepage offer settings:", error);
-        if (active) setOffersError("Offers are using the default homepage settings.");
+        if (active)
+          setOffersError("Offers are using the default homepage settings.");
       } finally {
         if (active) setOffersLoading(false);
       }
@@ -428,7 +412,7 @@ export default function Home() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "homepage_offer_settings" },
-        loadOfferSettings
+        loadOfferSettings,
       )
       .subscribe();
 
@@ -444,7 +428,9 @@ export default function Home() {
 
   const excitingOfferProducts = (() => {
     if (offerSettings.mode === "manual") {
-      const productsById = new Map(products.map((product) => [String(product.id), product]));
+      const productsById = new Map(
+        products.map((product) => [String(product.id), product]),
+      );
       return (offerSettings.product_ids || [])
         .map((id) => productsById.get(String(id)))
         .filter(Boolean)
@@ -454,13 +440,19 @@ export default function Home() {
     return products
       .filter((product) => {
         const price = Number(product.price || 0);
-        const original = Number(product.original_price ?? product.originalPrice ?? 0);
+        const original = Number(
+          product.original_price ?? product.originalPrice ?? 0,
+        );
         return original > price && original > 0;
       })
       .sort((a, b) => {
-        const discountA = (Number(a.original_price ?? a.originalPrice ?? 0) - Number(a.price || 0)) /
+        const discountA =
+          (Number(a.original_price ?? a.originalPrice ?? 0) -
+            Number(a.price || 0)) /
           Math.max(Number(a.original_price ?? a.originalPrice ?? 0), 1);
-        const discountB = (Number(b.original_price ?? b.originalPrice ?? 0) - Number(b.price || 0)) /
+        const discountB =
+          (Number(b.original_price ?? b.originalPrice ?? 0) -
+            Number(b.price || 0)) /
           Math.max(Number(b.original_price ?? b.originalPrice ?? 0), 1);
         return discountB - discountA;
       })
@@ -469,23 +461,18 @@ export default function Home() {
 
   const dailyProducts = products
     .filter((product) =>
-      [
-        "daily-puja",
-        "daily-puja-essentials",
-        "pooja-items",
-        "pooja",
-      ].includes(
+      ["daily-puja", "daily-puja-essentials", "pooja-items", "pooja"].includes(
         String(product.category_slug || product.categorySlug || "")
           .toLowerCase()
-          .trim()
-      )
+          .trim(),
+      ),
     )
     .slice(0, 6);
 
   const comboProducts = products
     .filter((product) => {
       const slug = String(
-        product.category_slug || product.categorySlug || ""
+        product.category_slug || product.categorySlug || "",
       ).toLowerCase();
 
       const category = String(product.category || "").toLowerCase();
@@ -500,14 +487,10 @@ export default function Home() {
     .slice(0, 5);
 
   const featuredProducts =
-    dailyProducts.length > 0
-      ? dailyProducts
-      : products.slice(0, 6);
+    dailyProducts.length > 0 ? dailyProducts : products.slice(0, 6);
 
   const festivalProducts =
-    comboProducts.length > 0
-      ? comboProducts
-      : products.slice(0, 5);
+    comboProducts.length > 0 ? comboProducts : products.slice(0, 5);
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#fffaf3] text-[#332326]">
@@ -599,10 +582,7 @@ export default function Home() {
           ) : categories.length > 0 ? (
             <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
               {categories.map((category) => (
-                <CategoryCard
-                  key={category.id}
-                  category={category}
-                />
+                <CategoryCard key={category.id} category={category} />
               ))}
             </div>
           ) : (
@@ -612,9 +592,7 @@ export default function Home() {
                 No categories available right now.
               </p>
               {categoryError && (
-                <p className="mt-1 text-xs text-red-600">
-                  {categoryError}
-                </p>
+                <p className="mt-1 text-xs text-red-600">{categoryError}</p>
               )}
             </div>
           )}
@@ -630,7 +608,7 @@ export default function Home() {
             />
 
             {loading || offersLoading ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={index}
@@ -639,12 +617,20 @@ export default function Home() {
                 ))}
               </div>
             ) : excitingOfferProducts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8">
                 {excitingOfferProducts.map((product) => (
-                  <ProductTile
+                  <ProductCard
                     key={product.id}
-                    product={product}
-                    onAdd={addToCart}
+                    product={{
+                      ...product,
+                      image:
+                        product.image ||
+                        product.image_url ||
+                        product.imageUrl ||
+                        "",
+                      originalPrice:
+                        product.originalPrice ?? product.original_price,
+                    }}
                   />
                 ))}
               </div>
@@ -680,24 +666,17 @@ export default function Home() {
                 <p className="text-xs font-bold text-[#4a2a2b]">
                   Fast & Safe Delivery
                 </p>
-                <p className="mt-1 text-[10px] text-stone-500">
-                  Across India
-                </p>
+                <p className="mt-1 text-[10px] text-stone-500">Across India</p>
               </div>
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              <ShieldCheck
-                size={25}
-                className="shrink-0 text-[#701d30]"
-              />
+              <ShieldCheck size={25} className="shrink-0 text-[#701d30]" />
               <div>
                 <p className="text-xs font-bold text-[#4a2a2b]">
                   Secure Payments
                 </p>
-                <p className="mt-1 text-[10px] text-stone-500">
-                  Safe checkout
-                </p>
+                <p className="mt-1 text-[10px] text-stone-500">Safe checkout</p>
               </div>
             </div>
 
@@ -707,9 +686,7 @@ export default function Home() {
                 <p className="text-xs font-bold text-[#4a2a2b]">
                   Pure & Authentic
                 </p>
-                <p className="mt-1 text-[10px] text-stone-500">
-                  Puja Samagri
-                </p>
+                <p className="mt-1 text-[10px] text-stone-500">Puja Samagri</p>
               </div>
             </div>
 
@@ -748,8 +725,8 @@ export default function Home() {
             </Link>
 
             <p className="mt-4 max-w-xs text-xs leading-6 text-white/70">
-              Bringing devotion home with thoughtfully selected puja
-              essentials for every prayer, festival and sacred occasion.
+              Bringing devotion home with thoughtfully selected puja essentials
+              for every prayer, festival and sacred occasion.
             </p>
           </div>
 
@@ -759,12 +736,24 @@ export default function Home() {
             </h3>
 
             <div className="grid grid-cols-2 gap-3 text-xs text-white/75">
-              <Link to="/" className="hover:text-white">Home</Link>
-              <Link to="/categories" className="hover:text-white">All Categories</Link>
-              <Link to="/wishlist" className="hover:text-white">Wishlist</Link>
-              <Link to="/cart" className="hover:text-white">My Cart</Link>
-              <Link to="/orders" className="hover:text-white">My Orders</Link>
-              <Link to="/contact" className="hover:text-white">Contact Us</Link>
+              <Link to="/" className="hover:text-white">
+                Home
+              </Link>
+              <Link to="/categories" className="hover:text-white">
+                All Categories
+              </Link>
+              <Link to="/wishlist" className="hover:text-white">
+                Wishlist
+              </Link>
+              <Link to="/cart" className="hover:text-white">
+                My Cart
+              </Link>
+              <Link to="/orders" className="hover:text-white">
+                My Orders
+              </Link>
+              <Link to="/contact" className="hover:text-white">
+                Contact Us
+              </Link>
             </div>
           </div>
 

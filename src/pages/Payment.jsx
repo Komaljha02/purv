@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -27,6 +28,7 @@ export default function Payment() {
   const { cart, cartTotal, addresses, placeOrder } = useShop();
 
   const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
+  const [deliveryType, setDeliveryType] = useState("scheduled");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState("");
   const [error, setError] = useState("");
@@ -37,7 +39,7 @@ export default function Payment() {
 
   const itemCount = cart.reduce(
     (total, item) => total + item.quantity,
-    0,
+    0
   );
 
   const subtotal = cartTotal;
@@ -68,7 +70,7 @@ export default function Payment() {
 
     if (cart.length === 0) {
       setError(
-        "Your cart is empty. Please add products before placing an order.",
+        "Your cart is empty. Please add products before placing an order."
       );
       return;
     }
@@ -78,13 +80,12 @@ export default function Payment() {
       return;
     }
 
-    if (!deliveryDate) {
-      setError("Please select your preferred delivery date.");
-      return;
-    }
-
-    if (!deliveryTimeSlot) {
-      setError("Please select your preferred delivery time slot.");
+    // Date and time are required only for scheduled delivery
+    if (
+      deliveryType === "scheduled" &&
+      (!deliveryDate || !deliveryTimeSlot)
+    ) {
+      setError("Please select your preferred delivery date and time slot.");
       return;
     }
 
@@ -92,8 +93,11 @@ export default function Payment() {
 
     try {
       const order = await placeOrder(addressId, paymentMethod, {
-        deliveryDate,
-        deliveryTimeSlot,
+        deliveryType,
+        deliveryDate:
+          deliveryType === "scheduled" ? deliveryDate : null,
+        deliveryTimeSlot:
+          deliveryType === "scheduled" ? deliveryTimeSlot : null,
       });
 
       if (order) {
@@ -108,7 +112,7 @@ export default function Payment() {
       console.error("Order placement failed:", err);
 
       setError(
-        err.message || "Something went wrong while placing your order.",
+        err.message || "Something went wrong while placing your order."
       );
 
       setIsPlacingOrder(false);
@@ -142,8 +146,8 @@ export default function Payment() {
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#806b61] sm:text-base">
               Review your delivery details, schedule your delivery, choose how
-              you want to pay, and get your festive favourites delivered to
-              your door.
+              you want to pay, and get your festive favourites delivered to your
+              door.
             </p>
           </div>
 
@@ -276,7 +280,7 @@ export default function Payment() {
                   </div>
                 </div>
 
-                {/* Schedule delivery */}
+                {/* Delivery options and scheduling */}
                 <div className="rounded-3xl border border-[#f0dfca] bg-white p-5 shadow-sm sm:p-7">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff0dc] text-[#8b3026]">
@@ -285,81 +289,193 @@ export default function Payment() {
 
                     <div>
                       <h2 className="text-lg font-bold text-[#54251f]">
-                        Schedule your delivery
+                        Choose your delivery option
                       </h2>
 
                       <p className="mt-1 text-sm text-gray-500">
-                        Choose a convenient date and time for your order.
+                        Select how quickly you would like to receive your order.
                       </p>
                     </div>
                   </div>
 
-                  {/* Date selection */}
-                  <div className="mt-6">
-                    <label
-                      htmlFor="delivery-date"
-                      className="mb-2 block text-sm font-semibold text-[#54251f]"
+                  {/* Delivery type selection */}
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {/* Fast delivery */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeliveryType("fast");
+                        setDeliveryDate("");
+                        setDeliveryTimeSlot("");
+                        setError("");
+                      }}
+                      aria-pressed={deliveryType === "fast"}
+                      className={`rounded-2xl border p-4 text-left transition duration-200 ${
+                        deliveryType === "fast"
+                          ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
+                          : "border-[#eee3d8] hover:border-[#d8b9a3]"
+                      }`}
                     >
-                      Preferred delivery date
-                    </label>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 font-bold text-[#54251f]">
+                          <Sparkles size={19} className="text-[#b45324]" />
+                          Fast Delivery
+                        </span>
 
-                    <input
-                      id="delivery-date"
-                      type="date"
-                      min={minDeliveryDate}
-                      value={deliveryDate}
-                      onChange={(e) => setDeliveryDate(e.target.value)}
-                      className="w-full rounded-xl border border-[#e8d8c8] bg-[#fffaf4] px-4 py-3 text-sm text-[#54251f] outline-none transition focus:border-[#8b3026] focus:ring-2 focus:ring-[#8b3026]/10"
-                    />
-                  </div>
-
-                  {/* Time slot selection */}
-                  <div className="mt-6">
-                    <div className="mb-3 flex items-center gap-2">
-                      <Clock size={17} className="text-[#8b3026]" />
-
-                      <h3 className="text-sm font-semibold text-[#54251f]">
-                        Choose a delivery time slot
-                      </h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {deliveryTimeSlots.map((slot) => (
-                        <label
-                          key={slot}
-                          className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${
-                            deliveryTimeSlot === slot
-                              ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
-                              : "border-[#eee3d8] hover:border-[#d8b9a3]"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="deliveryTimeSlot"
-                            value={slot}
-                            checked={deliveryTimeSlot === slot}
-                            onChange={() => setDeliveryTimeSlot(slot)}
-                            className="h-4 w-4 accent-[#8b3026]"
+                        {deliveryType === "fast" && (
+                          <CheckCircle2
+                            size={19}
+                            className="text-green-600"
                           />
+                        )}
+                      </div>
 
-                          <span className="text-sm font-semibold text-[#54251f]">
-                            {slot}
-                          </span>
+                      <p className="mt-3 text-xl font-extrabold text-[#8b3026]">
+                        Within 1 hour
+                      </p>
 
-                          {deliveryTimeSlot === slot && (
-                            <CheckCircle2
-                              size={17}
-                              className="ml-auto shrink-0 text-green-600"
-                            />
-                          )}
-                        </label>
-                      ))}
-                    </div>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        Get your order delivered quickly. Subject to location
+                        and availability.
+                      </p>
+                    </button>
+
+                    {/* Scheduled delivery */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeliveryType("scheduled");
+                        setError("");
+                      }}
+                      aria-pressed={deliveryType === "scheduled"}
+                      className={`rounded-2xl border p-4 text-left transition duration-200 ${
+                        deliveryType === "scheduled"
+                          ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
+                          : "border-[#eee3d8] hover:border-[#d8b9a3]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 font-bold text-[#54251f]">
+                          <CalendarDays
+                            size={19}
+                            className="text-[#b45324]"
+                          />
+                          Scheduled Delivery
+                        </span>
+
+                        {deliveryType === "scheduled" && (
+                          <CheckCircle2
+                            size={19}
+                            className="text-green-600"
+                          />
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-xl font-extrabold text-[#8b3026]">
+                        Choose your time
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        Select the delivery date and time that suits you.
+                      </p>
+                    </button>
                   </div>
 
-                  {/* Schedule preview */}
-                  {deliveryDate && deliveryTimeSlot && (
-                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                  {/* Scheduled delivery fields */}
+                  {deliveryType === "scheduled" && (
+                    <div className="mt-7 border-t border-[#f1e7dc] pt-6">
+                      {/* Date selection */}
+                      <div>
+                        <label
+                          htmlFor="delivery-date"
+                          className="mb-2 block text-sm font-semibold text-[#54251f]"
+                        >
+                          Preferred delivery date
+                        </label>
+
+                        <input
+                          id="delivery-date"
+                          type="date"
+                          min={minDeliveryDate}
+                          value={deliveryDate}
+                          onChange={(e) => {
+                            setDeliveryDate(e.target.value);
+                            setError("");
+                          }}
+                          className="w-full rounded-xl border border-[#e8d8c8] bg-[#fffaf4] px-4 py-3 text-sm text-[#54251f] outline-none transition focus:border-[#8b3026] focus:ring-2 focus:ring-[#8b3026]/10"
+                        />
+                      </div>
+
+                      {/* Time slot selection */}
+                      <div className="mt-6">
+                        <div className="mb-3 flex items-center gap-2">
+                          <Clock size={17} className="text-[#8b3026]" />
+
+                          <h3 className="text-sm font-semibold text-[#54251f]">
+                            Choose a delivery time slot
+                          </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {deliveryTimeSlots.map((slot) => (
+                            <label
+                              key={slot}
+                              className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${
+                                deliveryTimeSlot === slot
+                                  ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
+                                  : "border-[#eee3d8] hover:border-[#d8b9a3]"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="deliveryTimeSlot"
+                                value={slot}
+                                checked={deliveryTimeSlot === slot}
+                                onChange={() => {
+                                  setDeliveryTimeSlot(slot);
+                                  setError("");
+                                }}
+                                className="h-4 w-4 accent-[#8b3026]"
+                              />
+
+                              <span className="text-sm font-semibold text-[#54251f]">
+                                {slot}
+                              </span>
+
+                              {deliveryTimeSlot === slot && (
+                                <CheckCircle2
+                                  size={17}
+                                  className="ml-auto shrink-0 text-green-600"
+                                />
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delivery selection preview */}
+                  {deliveryType === "fast" ? (
+                    <div className="mt-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                      <CheckCircle2
+                        size={20}
+                        className="mt-0.5 shrink-0 text-green-700"
+                      />
+
+                      <div>
+                        <p className="text-sm font-bold text-green-800">
+                          Fast delivery selected
+                        </p>
+
+                        <p className="mt-1 text-sm text-green-700">
+                          Estimated delivery within 1 hour, subject to location
+                          and availability.
+                        </p>
+                      </div>
+                    </div>
+                  ) : deliveryDate && deliveryTimeSlot ? (
+                    <div className="mt-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
                       <CheckCircle2
                         size={20}
                         className="mt-0.5 shrink-0 text-green-700"
@@ -372,7 +488,7 @@ export default function Payment() {
 
                         <p className="mt-1 text-sm text-green-700">
                           {new Date(
-                            `${deliveryDate}T00:00:00`,
+                            `${deliveryDate}T00:00:00`
                           ).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "long",
@@ -385,14 +501,12 @@ export default function Payment() {
                         </p>
                       </div>
                     </div>
-                  )}
-
-                  <div className="mt-5 rounded-xl bg-[#f7f5ed] p-4">
-                    <p className="text-xs leading-5 text-gray-600">
-                      Your selected delivery date and time will be saved with
-                      your order.
+                  ) : (
+                    <p className="mt-5 text-xs leading-5 text-gray-500">
+                      Please select both a delivery date and time slot to
+                      continue.
                     </p>
-                  </div>
+                  )}
                 </div>
 
                 {/* Payment method */}
@@ -580,7 +694,7 @@ export default function Payment() {
                           <p className="mt-2 text-sm font-bold text-[#8b3026]">
                             ₹
                             {Number(
-                              item.price * item.quantity,
+                              item.price * item.quantity
                             ).toLocaleString("en-IN")}
                           </p>
                         </div>
@@ -597,9 +711,7 @@ export default function Payment() {
                     <div className="flex items-center gap-2">
                       <ShoppingBag size={20} />
 
-                      <h2 className="text-lg font-bold">
-                        Order summary
-                      </h2>
+                      <h2 className="text-lg font-bold">Order summary</h2>
                     </div>
 
                     <p className="mt-1 text-sm text-[#f1d9ca]">
@@ -620,9 +732,7 @@ export default function Payment() {
                       </div>
 
                       <div className="flex justify-between gap-4">
-                        <span className="text-gray-500">
-                          Delivery fee
-                        </span>
+                        <span className="text-gray-500">Delivery fee</span>
 
                         <span className="font-semibold text-green-700">
                           {deliveryCharge === 0
@@ -632,28 +742,43 @@ export default function Payment() {
                       </div>
                     </div>
 
-                    {/* Selected delivery schedule */}
-                    {deliveryDate && deliveryTimeSlot && (
-                      <div className="mt-5 rounded-xl bg-[#fff8ef] p-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-[#8b3026]">
-                          Scheduled delivery
-                        </p>
+                    {/* Selected delivery option */}
+                    <div className="mt-5 rounded-xl bg-[#fff8ef] p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-[#8b3026]">
+                        Delivery option
+                      </p>
 
-                        <p className="mt-2 text-sm font-semibold text-[#54251f]">
-                          {new Date(
-                            `${deliveryDate}T00:00:00`,
-                          ).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
+                      {deliveryType === "fast" ? (
+                        <>
+                          <p className="mt-2 text-sm font-bold text-[#54251f]">
+                            Fast Delivery
+                          </p>
 
-                        <p className="mt-1 text-xs text-gray-600">
-                          {deliveryTimeSlot}
-                        </p>
-                      </div>
-                    )}
+                          <p className="mt-1 text-xs text-gray-600">
+                            Estimated within 1 hour
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-sm font-semibold text-[#54251f]">
+                            {deliveryDate
+                              ? new Date(
+                                  `${deliveryDate}T00:00:00`
+                                ).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "Date not selected"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-600">
+                            {deliveryTimeSlot ||
+                              "Time slot not selected"}
+                          </p>
+                        </>
+                      )}
+                    </div>
 
                     <div className="my-5 border-t border-dashed border-[#e8d8c8]" />
 
@@ -700,7 +825,6 @@ export default function Payment() {
 
                     <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
                       <LockKeyhole size={14} />
-
                       <span>
                         Checkout demo · No real payment processing
                       </span>

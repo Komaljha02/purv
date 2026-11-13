@@ -45,27 +45,32 @@ export function ShopProvider({ children }) {
   useEffect(() => writeStorage("purv-addresses", addresses), [addresses]);
   useEffect(() => writeStorage("purv-orders", orders), [orders]);
 
+  // Add product to cart
   function addToCart(product) {
-    if (!product?.id) return;
+    if (!product || product.id == null) return;
 
-    const stock = Number(product.stock);
-    if (Number.isFinite(stock) && stock <= 0) return;
+    const stock =
+      product.stock == null || product.stock === ""
+        ? null
+        : Number(product.stock);
+
+    // Prevent adding products that are out of stock.
+    if (stock !== null && Number.isFinite(stock) && stock <= 0) {
+      return;
+    }
 
     setCart((previous) => {
       const existingProduct = previous.find(
-        (item) => item.id === product.id
+        (item) => String(item.id) === String(product.id)
       );
 
       if (existingProduct) {
-        const currentQuantity = Number(existingProduct.quantity) || 0;
-
-        if (Number.isFinite(stock) && currentQuantity >= stock) {
-          return previous;
-        }
-
         return previous.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: currentQuantity + 1 }
+          String(item.id) === String(product.id)
+            ? {
+                ...item,
+                quantity: (Number(item.quantity) || 0) + 1,
+              }
             : item
         );
       }
@@ -74,43 +79,37 @@ export function ShopProvider({ children }) {
     });
   }
 
+  // Change product quantity
   function changeQuantity(productId, change) {
     const amount = Number(change);
+
     if (!Number.isFinite(amount) || amount === 0) return;
 
     setCart((previous) =>
       previous
         .map((item) => {
-          if (item.id !== productId) return item;
+          if (String(item.id) !== String(productId)) return item;
 
           const currentQuantity = Number(item.quantity) || 0;
           const nextQuantity = currentQuantity + amount;
 
-          if (nextQuantity <= 0) {
-            return { ...item, quantity: 0 };
-          }
-
-          const stock = Number(item.stock);
-
-          if (Number.isFinite(stock) && stock >= 0) {
-            return {
-              ...item,
-              quantity: Math.min(nextQuantity, stock),
-            };
-          }
-
-          return { ...item, quantity: nextQuantity };
+          return {
+            ...item,
+            quantity: Math.max(0, nextQuantity),
+          };
         })
         .filter((item) => item.quantity > 0)
     );
   }
 
+  // Remove product from cart
   function removeFromCart(productId) {
     setCart((previous) =>
       previous.filter((item) => item.id !== productId)
     );
   }
 
+  // Add or remove product from wishlist
   function toggleWishlist(productId) {
     setWishlist((previous) =>
       previous.includes(productId)
@@ -119,6 +118,7 @@ export function ShopProvider({ children }) {
     );
   }
 
+  // Save delivery address
   function saveAddress(address) {
     const newAddress = {
       ...address,
@@ -132,10 +132,11 @@ export function ShopProvider({ children }) {
     };
 
     setAddresses((previous) => [...previous, newAddress]);
+
     return newAddress;
   }
 
-  // Place order and save the selected delivery schedule.
+  // Place order with Fast Delivery or Scheduled Delivery
   async function placeOrder(
     addressId,
     paymentMethod,
@@ -149,14 +150,37 @@ export function ShopProvider({ children }) {
 
     if (!selectedAddress) return null;
 
-    const deliveryDate = deliverySchedule.deliveryDate || null;
-    const deliveryTimeSlot =
-      deliverySchedule.deliveryTimeSlot || null;
+    // Determine selected delivery type
+    const deliveryType =
+      deliverySchedule.deliveryType === "fast"
+        ? "fast"
+        : "scheduled";
 
-    if (!deliveryDate || !deliveryTimeSlot) {
-      throw new Error("Please select a delivery date and time slot.");
+    // Save date and time only for scheduled delivery
+    const deliveryDate =
+      deliveryType === "scheduled"
+        ? deliverySchedule.deliveryDate || null
+        : null;
+
+    const deliveryTimeSlot =
+      deliveryType === "scheduled"
+        ? deliverySchedule.deliveryTimeSlot || null
+        : "Fast delivery - within 1 hour";
+
+    // Validate scheduled delivery
+    if (
+      deliveryType === "scheduled" &&
+      (!deliveryDate || !deliveryTimeSlot)
+    ) {
+      throw new Error(
+        "Please select a delivery date and time slot."
+      );
     }
 
+    const deliveryEstimate =
+      deliveryType === "fast" ? "Within 1 hour" : null;
+
+    // Calculate order total
     const subtotal = cart.reduce(
       (total, item) =>
         total +
@@ -174,6 +198,7 @@ export function ShopProvider({ children }) {
 
     const orderNumber = `PURV-${Date.now()}`;
 
+    // Prepare order items
     const orderItems = cart.map((item) => ({
       id: item.id,
       name: item.name || "Product",
@@ -188,21 +213,29 @@ export function ShopProvider({ children }) {
         "",
     }));
 
+    // Prepare order for Supabase
     const newOrder = {
       id: orderId,
       order_number: orderNumber,
       items: orderItems,
       delivery_address: { ...selectedAddress },
+
       payment_method: paymentMethod,
+
       payment_status:
         paymentMethod === "Cash on Delivery"
           ? "Pending"
           : "Demo payment - not processed",
+
+      delivery_type: deliveryType,
+      delivery_estimate: deliveryEstimate,
       delivery_date: deliveryDate,
       delivery_time_slot: deliveryTimeSlot,
+
       subtotal,
       delivery_charge: deliveryCharge,
       total: subtotal + deliveryCharge,
+
       status: "Order placed",
     };
 
@@ -213,6 +246,7 @@ export function ShopProvider({ children }) {
 
       if (error) throw error;
 
+      // Save order locally
       const customerOrder = {
         ...newOrder,
         orderNumber,
@@ -226,7 +260,9 @@ export function ShopProvider({ children }) {
         ...previous,
       ]);
 
+      // Clear cart after successful order placement
       setCart([]);
+
       return customerOrder;
     } catch (error) {
       console.error("Supabase order error:", error);
@@ -234,15 +270,18 @@ export function ShopProvider({ children }) {
     }
   }
 
+  // Total number of cart items
   const cartCount = useMemo(
     () =>
       cart.reduce(
-        (total, item) => total + (Number(item.quantity) || 0),
+        (total, item) =>
+          total + (Number(item.quantity) || 0),
         0
       ),
     [cart]
   );
 
+  // Cart subtotal
   const cartTotal = useMemo(
     () =>
       cart.reduce(
@@ -270,7 +309,14 @@ export function ShopProvider({ children }) {
       saveAddress,
       placeOrder,
     }),
-    [cart, wishlist, addresses, orders, cartCount, cartTotal]
+    [
+      cart,
+      wishlist,
+      addresses,
+      orders,
+      cartCount,
+      cartTotal,
+    ]
   );
 
   return (
@@ -284,7 +330,9 @@ export function useShop() {
   const context = useContext(ShopContext);
 
   if (!context) {
-    throw new Error("useShop must be used inside ShopProvider");
+    throw new Error(
+      "useShop must be used inside ShopProvider"
+    );
   }
 
   return context;

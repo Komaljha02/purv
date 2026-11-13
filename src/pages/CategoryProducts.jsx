@@ -236,7 +236,7 @@ function CategoryNavigation({
 function ProductSkeleton() {
   return (
     <div
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
       aria-label="Loading products"
     >
       {Array.from({ length: 8 }).map((_, index) => (
@@ -739,7 +739,7 @@ export default function CategoryProducts() {
                 </button>
               </div>
             ) : visibleProducts.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:gap-3 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                 {visibleProducts.map((product) => (
                   <div
                     key={product.id}

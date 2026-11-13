@@ -9,6 +9,8 @@ import {
   Truck,
   ImageOff,
   RefreshCw,
+  CalendarDays,
+  Zap,
 } from "lucide-react";
 
 import Header from "../components/Header";
@@ -60,7 +62,6 @@ function OrderTracking() {
     } catch (err) {
       console.error("Order refresh failed:", err);
 
-      // Keep locally saved details visible if the request fails.
       setOrder((previous) => previous || localOrder || null);
 
       setError(
@@ -87,6 +88,23 @@ function OrderTracking() {
   const currentStatus = order?.status || "Order placed";
   const cancelled = currentStatus === "Cancelled";
   const currentIndex = statuses.indexOf(currentStatus);
+
+  // Delivery information - supports both old and new orders
+  const deliveryType =
+    order?.delivery_type || order?.deliveryType || "scheduled";
+
+  const isFastDelivery = deliveryType === "fast";
+
+  const deliveryDate =
+    order?.delivery_date || order?.deliveryDate;
+
+  const deliveryTimeSlot =
+    order?.delivery_time_slot || order?.deliveryTimeSlot;
+
+  const deliveryEstimate =
+    order?.delivery_estimate ||
+    order?.deliveryEstimate ||
+    "Within 1 hour";
 
   return (
     <>
@@ -138,6 +156,7 @@ function OrderTracking() {
           ) : (
             <div className="mt-8 rounded-3xl border border-rose-100 bg-white p-5 shadow-sm sm:p-8">
 
+              {/* ORDER HEADER */}
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold tracking-wider text-[#a36b25]">
@@ -195,6 +214,89 @@ function OrderTracking() {
                   This status is updated by the Purv admin team.
                 </p>
               </div>
+
+              {/* DELIVERY INFORMATION */}
+              <section className="mt-7">
+                <h2 className="font-bold text-[#54251f]">
+                  Delivery Information
+                </h2>
+
+                {isFastDelivery ? (
+                  <div className="mt-4 rounded-2xl border border-green-100 bg-green-50 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100">
+                        <Zap size={23} className="text-green-700" />
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-green-800">
+                          Fast Delivery
+                        </p>
+
+                        <p className="mt-1 text-sm text-green-700">
+                          Expected delivery: {deliveryEstimate}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-6 text-green-800">
+                      Your order has been placed with the Fast Delivery
+                      option. Track the order status above for updates.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-rose-100 bg-[#fff8ef] p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f8e8e5]">
+                        <CalendarDays
+                          size={22}
+                          className="text-[#76233a]"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-[#54251f]">
+                          Scheduled Delivery
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                          Your selected delivery schedule
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-white p-3">
+                        <p className="text-xs text-gray-500">
+                          Delivery Date
+                        </p>
+
+                        <p className="mt-1 font-semibold text-[#54251f]">
+                          {deliveryDate
+                            ? new Date(
+                                `${deliveryDate}T00:00:00`
+                              ).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })
+                            : "As scheduled"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-white p-3">
+                        <p className="text-xs text-gray-500">
+                          Delivery Time
+                        </p>
+
+                        <p className="mt-1 font-semibold text-[#54251f]">
+                          {deliveryTimeSlot || "Selected time slot"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
 
               {/* ORDER TIMELINE */}
               <section className="mt-7">
@@ -331,7 +433,9 @@ function OrderTracking() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-500">Payment method</span>
-                  <strong>{order.payment_method || "Not available"}</strong>
+                  <strong>
+                    {order.payment_method || order.paymentMethod || "Not available"}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between gap-3">
@@ -353,6 +457,7 @@ function OrderTracking() {
                   <span className="font-bold text-[#54251f]">
                     Order total
                   </span>
+
                   <strong className="text-[#76233a]">
                     {money(order.total ?? order.subtotal)}
                   </strong>
@@ -363,6 +468,7 @@ function OrderTracking() {
               <div className="mt-7 rounded-2xl bg-[#fff8ef] p-5">
                 <div className="flex items-center gap-2">
                   <Truck size={19} className="text-[#76233a]" />
+
                   <h2 className="font-bold text-[#54251f]">
                     Delivery address
                   </h2>

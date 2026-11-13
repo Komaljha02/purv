@@ -1,4 +1,3 @@
-
 import { Link, useNavigate } from "react-router-dom";
 import {
   ShoppingBag,
@@ -29,7 +28,7 @@ export default function Cart() {
 
   const totalQuantity = cart.reduce(
     (total, item) => total + Math.max(0, Number(item.quantity) || 0),
-    0
+    0,
   );
 
   const originalTotal = cart.reduce((total, item) => {
@@ -44,14 +43,13 @@ export default function Cart() {
     `₹${Number(price || 0).toLocaleString("en-IN")}`;
 
   function getProduct(item) {
-    return products.find(
-      (product) => String(product.id) === String(item.id)
-    );
+    return products.find((product) => String(product.id) === String(item.id));
   }
-
   function getAvailableStock(item) {
     const product = getProduct(item);
-    return Math.max(0, Number(product?.stock ?? item.stock) || 0);
+    const stock = item.stock ?? product?.stock;
+
+    return Math.max(0, Number(stock) || 0);
   }
 
   function canIncrease(item) {
@@ -61,9 +59,7 @@ export default function Cart() {
     );
   }
 
-  const unavailableItems = cart.filter(
-    (item) => getAvailableStock(item) === 0
-  );
+  const unavailableItems = cart.filter((item) => getAvailableStock(item) === 0);
 
   return (
     <>
@@ -85,7 +81,6 @@ export default function Cart() {
 
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-
             <h1 className="flex flex-wrap items-center gap-3 text-3xl font-extrabold tracking-tight text-[#421521] sm:text-4xl">
               <ShoppingBag size={30} className="text-[#76233a]" />
               My Cart
@@ -93,7 +88,6 @@ export default function Cart() {
                 {totalQuantity}
               </span>
             </h1>
-
           </div>
 
           {cart.length > 0 && (
@@ -126,8 +120,8 @@ export default function Cart() {
               </h2>
 
               <p className="relative mx-auto mt-3 max-w-lg text-sm leading-6 text-[#765c50]">
-                Explore beauty essentials, festive decorations, jewellery,
-                pooja favourites, and thoughtful gifts for every celebration.
+                Explore beauty essentials, festive decorations, jewellery, pooja
+                favourites, and thoughtful gifts for every celebration.
               </p>
 
               <Link to="/categories" className="purv-button relative mt-6">
@@ -171,9 +165,7 @@ export default function Cart() {
             <section className="min-w-0 space-y-3">
               <div className="flex items-center justify-between rounded-[20px] border border-[#f0e3d9] bg-white px-4 py-3.5">
                 <div>
-                  <h2 className="font-extrabold text-[#421521]">
-                    Your items
-                  </h2>
+                  <h2 className="font-extrabold text-[#421521]">Your items</h2>
                   <p className="mt-1 text-xs text-[#82736f]">
                     {cart.length} {cart.length === 1 ? "product" : "products"}
                     {" · "}
@@ -208,7 +200,9 @@ export default function Cart() {
 
                 const discount =
                   originalPrice > price
-                    ? Math.round(((originalPrice - price) / originalPrice) * 100)
+                    ? Math.round(
+                        ((originalPrice - price) / originalPrice) * 100,
+                      )
                     : 0;
 
                 return (
@@ -397,10 +391,13 @@ export default function Cart() {
 
                   {savings > 0 && (
                     <div className="mt-4 flex items-start gap-2 rounded-xl border border-green-100 bg-[#f1f8ed] p-3">
-                      <Sparkles size={17} className="mt-0.5 shrink-0 text-green-700" />
+                      <Sparkles
+                        size={17}
+                        className="mt-0.5 shrink-0 text-green-700"
+                      />
                       <p className="text-xs leading-5 text-green-800">
-                        You’re saving <strong>{formatPrice(savings)}</strong>{" "}
-                        on these products.
+                        You’re saving <strong>{formatPrice(savings)}</strong> on
+                        these products.
                       </p>
                     </div>
                   )}
@@ -416,8 +413,13 @@ export default function Cart() {
                   </button>
 
                   <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-[#82736f]">
-                    <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#a34b3d]" />
-                    <p>Review your address and final charges before ordering.</p>
+                    <ShieldCheck
+                      size={16}
+                      className="mt-0.5 shrink-0 text-[#a34b3d]"
+                    />
+                    <p>
+                      Review your address and final charges before ordering.
+                    </p>
                   </div>
                 </div>
               </div>
