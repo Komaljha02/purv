@@ -171,7 +171,7 @@ export default function PaymentMethod() {
       <main className="min-h-screen bg-[#fffaf5] px-4 pb-12 pt-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
           <Link
-            to="/payment"
+            to="/checkout/payment"
             state={{ addressId, deliverySchedule }}
             className="inline-flex items-center gap-2 text-sm font-semibold text-[#76233a]"
           >

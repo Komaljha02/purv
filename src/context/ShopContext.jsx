@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { CheckCircle2, ShoppingBag, X, ArrowRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import {
@@ -77,6 +77,7 @@ function mergeAddresses(savedAddresses = [], previousOrders = []) {
 
 export function ShopProvider({ children }) {
   const [cart, setCart] = useState(() => readStorage("purv-cart", []));
+  const location = useLocation();
 
   const [wishlist, setWishlist] = useState(() =>
     readStorage("purv-wishlist", []),
@@ -440,31 +441,36 @@ export function ShopProvider({ children }) {
       {children}
 
       {/* Persistent floating cart bar */}
-      {cartCount > 0 && (
-        <div className="purv-floating-cart">
-          {/* Left: Items and total */}
-          <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <p className="text-sm font-bold text-white">
-              {cartCount} {cartCount === 1 ? "item" : "items"}
-            </p>
+    {cartCount > 0 &&
+  (
+    location.pathname === "/" ||
+    location.pathname === "/categories" ||
+    location.pathname.startsWith("/category/")
+  ) && (
+          <div className="purv-floating-cart">
+            {/* Left: Items and total */}
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <p className="text-sm font-bold text-white">
+                {cartCount} {cartCount === 1 ? "item" : "items"}
+              </p>
 
-            <p className="mt-1 text-lg font-extrabold text-white">
-              ₹{cartTotal.toLocaleString("en-IN")}
-            </p>
+              <p className="mt-1 text-lg font-extrabold text-white">
+                ₹{cartTotal.toLocaleString("en-IN")}
+              </p>
 
-            <p className="text-[10px] text-white/70">
-              Your cart is waiting for you
-            </p>
+              <p className="text-[10px] text-white/70">
+                Your cart is waiting for you
+              </p>
+            </div>
+
+            {/* Right: Cart button */}
+            <Link to="/cart" className="purv-floating-cart-button">
+              <ShoppingBag size={19} />
+              <span>Cart</span>
+              <ArrowRight size={16} />
+            </Link>
           </div>
-
-          {/* Right: Cart button */}
-          <Link to="/cart" className="purv-floating-cart-button">
-            <ShoppingBag size={19} />
-            <span>Cart</span>
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-      )}
+        )}
     </ShopContext.Provider>
   );
 }

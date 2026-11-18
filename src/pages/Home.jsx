@@ -7,12 +7,15 @@ import {
   Headset,
   Sparkles,
   PackageCheck,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 import Header from "../components/Header";
 import HeroSlideshow from "../components/HeroSlideshow";
 import { supabase } from "../lib/supabase";
 import ProductCard from "../components/ProductCard";
+import { useShop } from "../context/ShopContext";
 
 // Fallback images are used only when a category has no image_url in Supabase.
 const categoryFallbackImages = {
@@ -141,60 +144,176 @@ function CategoryCard({ category }) {
   );
 }
 
+
 function DiscountCircle({ product }) {
   const [imageFailed, setImageFailed] = useState(false);
 
+  const { cart, addToCart, changeQuantity, removeFromCart } = useShop();
+
   const price = Number(product.price || 0);
   const originalPrice = Number(
-    product.original_price ?? product.originalPrice ?? 0,
+    product.original_price ?? product.originalPrice ?? 0
   );
 
-  const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
+  const discount =
+    originalPrice > price && originalPrice > 0
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : 0;
 
   const image = product.image_url || product.image || product.imageUrl || "";
 
-  return (
-    <Link
-      to={`/product/${product.id}`}
-      className="group w-[105px] shrink-0 text-center sm:w-[130px]"
-    >
-      <div className="relative mx-auto h-[85px] w-[85px] overflow-hidden rounded-full border-[3px] border-[#e5c783] bg-gradient-to-br from-[#fff7e7] to-[#f1dfbd] shadow-md transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl sm:h-[100px] sm:w-[100px]">
-        {image && !imageFailed ? (
-          <img
-            src={image}
-            alt={product.name}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <LotusMark size={40} />
-          </div>
-        )}
+  const cartItem = cart.find(
+    (item) => String(item.id) === String(product.id)
+  );
 
-        <span className="absolute bottom-0 left-0 right-0 bg-[#791d30] py-1 text-[10px] font-extrabold tracking-wide text-white sm:text-xs">
-          {discount}% OFF
-        </span>
+  const quantity = Number(cartItem?.quantity || 0);
+
+  const stock =
+    product.stock == null || product.stock === ""
+      ? null
+      : Number(product.stock);
+
+  const isOutOfStock =
+    stock !== null && Number.isFinite(stock) && stock <= 0;
+
+  function increaseQuantity() {
+    if (isOutOfStock) return;
+
+    if (quantity === 0) {
+      addToCart(product);
+    } else {
+      changeQuantity(product.id, 1);
+    }
+  }
+
+  function decreaseQuantity() {
+    if (quantity <= 0) return;
+
+    if (quantity === 1) {
+      removeFromCart(product.id);
+    } else {
+      changeQuantity(product.id, -1);
+    }
+  }
+
+  return (
+    <div className="group w-[105px] shrink-0 text-center sm:w-[130px]">
+
+      {/* Circular Image with Floating Cart Control */}
+      <div className="relative mx-auto h-[85px] w-[85px] sm:h-[100px] sm:w-[100px]">
+
+        {/* Product Circle */}
+        <div className="relative h-full w-full overflow-hidden rounded-full border-[3px] border-[#e5c783] bg-gradient-to-br from-[#fff7e7] to-[#f1dfbd] shadow-md transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
+
+          <Link
+            to={`/product/${product.id}`}
+            className="block h-full w-full"
+          >
+            {image && !imageFailed ? (
+              <img
+                src={image}
+                alt={product.name}
+                loading="lazy"
+                onError={() => setImageFailed(true)}
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <LotusMark size={40} />
+              </div>
+            )}
+          </Link>
+
+          {/* Discount Ribbon */}
+          {discount > 0 && (
+            <span className="absolute bottom-0 left-0 right-0 z-[1] bg-[#791d30] py-1 text-[10px] font-extrabold tracking-wide text-white sm:text-xs">
+              {discount}% OFF
+            </span>
+          )}
+
+          {/* Out of Stock Overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 z-[2] flex items-center justify-center bg-white/65">
+              <span className="rounded-full bg-stone-800 px-2 py-1 text-[8px] font-bold text-white">
+                Sold Out
+              </span>
+            </div>
+          )}
+
+        </div>
+
+        {/* Floating Plus / Quantity Button - OUTSIDE CIRCLE */}
+        <div className="absolute -right-1 -top-1 z-10">
+
+          {quantity === 0 ? (
+            <button
+              type="button"
+              onClick={increaseQuantity}
+              disabled={isOutOfStock}
+              aria-label={`Add ${product.name} to cart`}
+              className="grid h-9 w-9 place-items-center rounded-xl border-2 border-[#76233a] bg-white text-[#76233a] shadow-lg transition hover:scale-110 hover:bg-[#76233a] hover:text-white active:scale-95 disabled:opacity-40 sm:h-10 sm:w-10"
+            >
+              <Plus size={22} strokeWidth={2.8} />
+            </button>
+          ) : (
+            <div className="flex h-8 items-center overflow-hidden rounded-lg border-2 border-[#76233a] bg-white text-[#76233a] shadow-lg sm:h-9">
+
+              <button
+                type="button"
+                onClick={decreaseQuantity}
+                aria-label={`Remove one ${product.name}`}
+                className="grid h-7 w-6 place-items-center sm:h-8 sm:w-7"
+              >
+                <Minus size={13} strokeWidth={2.5} />
+              </button>
+
+              <span className="min-w-4 text-center text-[11px] font-extrabold">
+                {quantity}
+              </span>
+
+              <button
+                type="button"
+                onClick={increaseQuantity}
+                aria-label={`Add one ${product.name}`}
+                disabled={stock !== null && quantity >= stock}
+                className="grid h-7 w-6 place-items-center disabled:opacity-40 sm:h-8 sm:w-7"
+              >
+                <Plus size={13} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Added Indicator */}
+        {quantity > 0 && (
+          <span className="absolute bottom-1 left-1 z-[3] flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[8px] font-bold text-green-700 shadow-sm">
+            ✓ Added
+          </span>
+        )}
       </div>
 
-      <h3 className="mt-2 line-clamp-2 min-h-8 text-[11px] font-bold leading-4 text-[#492b2d] transition group-hover:text-[#8b2938] sm:text-sm">
-        {product.name}
-      </h3>
+      {/* Product Name */}
+      <Link to={`/product/${product.id}`}>
+        <h3 className="mt-2 line-clamp-2 min-h-8 text-[11px] font-bold leading-4 text-[#492b2d] transition group-hover:text-[#8b2938] sm:text-sm">
+          {product.name}
+        </h3>
+      </Link>
 
+      {/* Price */}
       <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
         <span className="text-xs font-extrabold text-[#791d30] sm:text-sm">
           {money(price)}
         </span>
 
-        <span className="text-[10px] text-stone-400 line-through">
-          {money(originalPrice)}
-        </span>
+        {originalPrice > price && (
+          <span className="text-[10px] text-stone-400 line-through">
+            {money(originalPrice)}
+          </span>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
-
 export default function Home() {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);

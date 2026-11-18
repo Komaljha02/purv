@@ -149,7 +149,7 @@ export default function Address() {
     <>
       <Header />
 
-      <main className="min-h-screen bg-[#fffaf4] px-4 pb-16 pt-36 sm:px-6 sm:pt-40 lg:px-10">
+      <main className="min-h-screen bg-[#fffaf4] px-4 pb-16 pt-5 sm:px-6 sm:pt-5 lg:px-10">
         <div className="mx-auto max-w-[1200px]">
           {/* Breadcrumb */}
           <div className="mb-6 flex items-center gap-2 text-sm text-gray-500">
