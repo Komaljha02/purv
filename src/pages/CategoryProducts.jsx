@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -116,8 +117,9 @@ function CategoryNavigation({
 
   return (
     <>
-      {/* Mobile vertical subcategory sidebar */}
-      <div className="w-[76px] shrink-0 sm:w-[88px] lg:hidden">
+      {/* Mobile subcategory navigation */}
+
+      <div className="w-[64px] shrink-0 sm:w-[76px] lg:hidden">
         <div className="sticky top-24 flex max-h-[calc(100vh-120px)] flex-col gap-2 overflow-y-auto bg-[#fffaf5] pb-3">
           {items.map((item) => {
             const Icon =
@@ -155,6 +157,7 @@ function CategoryNavigation({
       </div>
 
       {/* Desktop sidebar */}
+
       <aside className="hidden w-[210px] shrink-0 lg:block xl:w-[230px]">
         <div className="sticky top-28 overflow-hidden rounded-2xl border border-[#eadcc7] bg-white shadow-sm">
           <div className="border-b border-[#eadcc7] bg-gradient-to-r from-[#fff4df] to-[#fffaf1] p-4">
@@ -180,6 +183,7 @@ function CategoryNavigation({
           <div className="max-h-[calc(100vh-250px)] space-y-1 overflow-y-auto p-2.5">
             {items.map((item) => {
               const selected = selectedSubcategory === item.slug;
+
               const Icon =
                 item.slug === "all" ? Sparkles : getSubcategoryIcon(item.name);
 
@@ -219,6 +223,7 @@ function CategoryNavigation({
             <p className="text-xs font-bold text-[#76233a]">
               Made with devotion
             </p>
+
             <p className="mt-1 text-[10px] leading-4 text-[#987c6a]">
               Thoughtfully selected puja essentials from Purv.
             </p>
@@ -230,13 +235,13 @@ function CategoryNavigation({
 }
 
 /* =========================================
-   LOADING SKELETON
+   PRODUCT LOADING SKELETON
 ========================================= */
 
 function ProductSkeleton() {
   return (
     <div
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
       aria-label="Loading products"
     >
       {Array.from({ length: 8 }).map((_, index) => (
@@ -347,7 +352,7 @@ export default function CategoryProducts() {
           schema: "public",
           table: "store_categories",
         },
-        run,
+        run
       )
       .subscribe();
 
@@ -369,7 +374,9 @@ export default function CategoryProducts() {
 
   /* =========================================
      LOAD PRODUCTS
-     Includes parent + subcategory products
+     Supports products linked by:
+     1. Main category slug + subcategory_slug
+     2. Subcategory slug in category_slug
   ========================================= */
 
   const loadProducts = useCallback(async () => {
@@ -385,7 +392,10 @@ export default function CategoryProducts() {
     setError("");
 
     try {
-      const categorySlugs = [slug, ...subcategories.map((item) => item.slug)];
+      const categorySlugs = [
+        slug,
+        ...subcategories.map((item) => item.slug),
+      ];
 
       const uniqueSlugs = [...new Set(categorySlugs.filter(Boolean))];
 
@@ -399,12 +409,6 @@ export default function CategoryProducts() {
 
       const formattedProducts = (data || []).map((product) => {
         const productCategorySlug = product.category_slug || "";
-
-        /*
-          Supports both product structures:
-          1. Parent category + subcategory_slug
-          2. category_slug directly set to subcategory slug
-        */
 
         const derivedSubcategorySlug =
           product.subcategory_slug ||
@@ -448,7 +452,7 @@ export default function CategoryProducts() {
           schema: "public",
           table: "products",
         },
-        run,
+        run
       )
       .subscribe();
 
@@ -482,7 +486,7 @@ export default function CategoryProducts() {
           product.subcategory,
         ]
           .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query)),
+          .some((value) => String(value).toLowerCase().includes(query))
       );
     }
 
@@ -496,7 +500,7 @@ export default function CategoryProducts() {
 
     if (sortBy === "newest") {
       result.sort(
-        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
       );
     }
 
@@ -521,6 +525,7 @@ export default function CategoryProducts() {
             <div className="h-4 w-32 rounded bg-[#f0e3d9]" />
             <div className="mt-5 h-36 rounded-2xl bg-[#f0e3d9]" />
             <div className="mt-6 h-10 rounded-xl bg-[#f0e3d9]" />
+
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Array.from({ length: 8 }).map((_, index) => (
                 <div
@@ -597,6 +602,7 @@ export default function CategoryProducts() {
 
       <main className="mx-auto w-full max-w-[1500px] overflow-hidden px-2 pb-12 pt-4 sm:px-5 sm:pt-5 lg:px-7">
         {/* Breadcrumb */}
+
         <nav
           aria-label="Breadcrumb"
           className="mb-4 flex items-center gap-2 overflow-hidden text-[10px] text-stone-500 sm:text-xs"
@@ -619,10 +625,19 @@ export default function CategoryProducts() {
           <span className="truncate font-semibold text-[#76233a]">
             {category.name}
           </span>
+
+          {selectedSubcategory !== "all" && (
+            <>
+              <ChevronRight size={13} className="shrink-0" />
+              <span className="truncate font-semibold text-[#76233a]">
+                {selectedLabel}
+              </span>
+            </>
+          )}
         </nav>
 
         {/* Main layout */}
-        {/* Main layout - sidebar left, products right */}
+
         <div className="flex w-full min-w-0 flex-row items-start gap-2 sm:gap-4 lg:gap-6">
           <CategoryNavigation
             category={category}
@@ -633,6 +648,7 @@ export default function CategoryProducts() {
 
           <section className="min-w-0 flex-1">
             {/* Selected category heading */}
+
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#a77a32] sm:text-[10px]">
@@ -667,6 +683,7 @@ export default function CategoryProducts() {
             </div>
 
             {/* Search and sorting */}
+
             <div className="mb-5 flex flex-col gap-2 sm:flex-row">
               <form
                 onSubmit={(event) => event.preventDefault()}
@@ -717,7 +734,8 @@ export default function CategoryProducts() {
               </label>
             </div>
 
-            {/* Products */}
+            {/* ACTUAL PRODUCTS */}
+
             {loading ? (
               <ProductSkeleton />
             ) : error ? (
@@ -739,12 +757,9 @@ export default function CategoryProducts() {
                 </button>
               </div>
             ) : visibleProducts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {visibleProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="min-w-0 animate-[fadeInUp_0.4s_ease_both]"
-                  >
+                  <div key={product.id} className="min-w-0">
                     <ProductCard product={product} />
                   </div>
                 ))}

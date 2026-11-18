@@ -1,10 +1,12 @@
-
+import { Link } from "react-router-dom";
+import { CheckCircle2, ShoppingBag, X, ArrowRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import {
   createContext,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -27,24 +29,102 @@ function writeStorage(key, value) {
     console.error(`Error saving ${key}:`, error);
   }
 }
+function normalizeAddress(address) {
+  return [
+    address.fullName,
+    address.phone,
+    address.house,
+    address.area,
+    address.city,
+    address.state,
+    address.pincode,
+  ]
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase(),
+    )
+    .join("|");
+}
+
+function getAddressFromOrder(order) {
+  return order?.delivery_address || order?.address || null;
+}
+
+function mergeAddresses(savedAddresses = [], previousOrders = []) {
+  const combined = [...savedAddresses];
+
+  previousOrders.forEach((order) => {
+    const address = getAddressFromOrder(order);
+    if (!address) return;
+
+    const exists = combined.some(
+      (saved) => normalizeAddress(saved) === normalizeAddress(address),
+    );
+
+    if (!exists) {
+      combined.push({
+        ...address,
+        id:
+          address.id ||
+          `recovered-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      });
+    }
+  });
+
+  return combined;
+}
 
 export function ShopProvider({ children }) {
   const [cart, setCart] = useState(() => readStorage("purv-cart", []));
+
   const [wishlist, setWishlist] = useState(() =>
-    readStorage("purv-wishlist", [])
+    readStorage("purv-wishlist", []),
   );
+
+  const [orders, setOrders] = useState(() => readStorage("purv-orders", []));
+
   const [addresses, setAddresses] = useState(() =>
-    readStorage("purv-addresses", [])
-  );
-  const [orders, setOrders] = useState(() =>
-    readStorage("purv-orders", [])
+    mergeAddresses(
+      readStorage("purv-addresses", []),
+      readStorage("purv-orders", []),
+    ),
   );
 
   useEffect(() => writeStorage("purv-cart", cart), [cart]);
   useEffect(() => writeStorage("purv-wishlist", wishlist), [wishlist]);
   useEffect(() => writeStorage("purv-addresses", addresses), [addresses]);
   useEffect(() => writeStorage("purv-orders", orders), [orders]);
+  const [cartToast, setCartToast] = useState(null);
+  const toastTimer = useRef(null);
 
+  function showCartToast(count) {
+    setCartToast({ count });
+
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+
+    toastTimer.current = setTimeout(() => {
+      setCartToast(null);
+    }, 3500);
+  }
+
+  function closeCartToast() {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+
+    setCartToast(null);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+      }
+    };
+  }, []);
   // Add product to cart
   function addToCart(product) {
     if (!product || product.id == null) return;
@@ -54,29 +134,33 @@ export function ShopProvider({ children }) {
         ? null
         : Number(product.stock);
 
-    // Prevent adding products that are out of stock.
     if (stock !== null && Number.isFinite(stock) && stock <= 0) {
       return;
     }
 
-    setCart((previous) => {
-      const existingProduct = previous.find(
-        (item) => String(item.id) === String(product.id)
-      );
+    const existingProduct = cart.find(
+      (item) => String(item.id) === String(product.id),
+    );
 
-      if (existingProduct) {
-        return previous.map((item) =>
+    const updatedCart = existingProduct
+      ? cart.map((item) =>
           String(item.id) === String(product.id)
             ? {
                 ...item,
                 quantity: (Number(item.quantity) || 0) + 1,
               }
-            : item
-        );
-      }
+            : item,
+        )
+      : [...cart, { ...product, quantity: 1 }];
 
-      return [...previous, { ...product, quantity: 1 }];
-    });
+    setCart(updatedCart);
+
+    const totalItems = updatedCart.reduce(
+      (total, item) => total + (Number(item.quantity) || 0),
+      0,
+    );
+
+    showCartToast(totalItems);
   }
 
   // Change product quantity
@@ -85,27 +169,37 @@ export function ShopProvider({ children }) {
 
     if (!Number.isFinite(amount) || amount === 0) return;
 
-    setCart((previous) =>
-      previous
-        .map((item) => {
-          if (String(item.id) !== String(productId)) return item;
+    const updatedCart = cart
+      .map((item) => {
+        if (String(item.id) !== String(productId)) return item;
 
-          const currentQuantity = Number(item.quantity) || 0;
-          const nextQuantity = currentQuantity + amount;
+        const currentQuantity = Number(item.quantity) || 0;
+        const nextQuantity = currentQuantity + amount;
 
-          return {
-            ...item,
-            quantity: Math.max(0, nextQuantity),
-          };
-        })
-        .filter((item) => item.quantity > 0)
-    );
+        return {
+          ...item,
+          quantity: Math.max(0, nextQuantity),
+        };
+      })
+      .filter((item) => item.quantity > 0);
+
+    setCart(updatedCart);
+
+    // Show popup only when adding quantity
+    if (amount > 0) {
+      const totalItems = updatedCart.reduce(
+        (total, item) => total + (Number(item.quantity) || 0),
+        0,
+      );
+
+      showCartToast(totalItems);
+    }
   }
 
   // Remove product from cart
   function removeFromCart(productId) {
     setCart((previous) =>
-      previous.filter((item) => item.id !== productId)
+      previous.filter((item) => String(item.id) !== String(productId)),
     );
   }
 
@@ -114,49 +208,67 @@ export function ShopProvider({ children }) {
     setWishlist((previous) =>
       previous.includes(productId)
         ? previous.filter((id) => id !== productId)
-        : [...previous, productId]
+        : [...previous, productId],
     );
   }
 
   // Save delivery address
   function saveAddress(address) {
+    const addressKey = normalizeAddress(address);
+
+    const existingAddress = addresses.find(
+      (saved) => normalizeAddress(saved) === addressKey,
+    );
+
+    // If this address is already saved, reuse it
+    if (existingAddress) {
+      return existingAddress;
+    }
+
     const newAddress = {
       ...address,
       id:
-        typeof crypto !== "undefined" &&
-        typeof crypto.randomUUID === "function"
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
-          : `address-${Date.now()}-${Math.random()
-              .toString(36)
-              .slice(2, 9)}`,
+          : `address-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     };
 
-    setAddresses((previous) => [...previous, newAddress]);
+    setAddresses((previous) => {
+      const alreadyExists = previous.some(
+        (saved) => normalizeAddress(saved) === addressKey,
+      );
+
+      if (alreadyExists) return previous;
+
+      return [...previous, newAddress];
+    });
 
     return newAddress;
   }
 
-  // Place order with Fast Delivery or Scheduled Delivery
+  // Place order with delivery and payment details
   async function placeOrder(
     addressId,
     paymentMethod,
-    deliverySchedule = {}
+    deliverySchedule = {},
+    paymentDetails = {},
   ) {
-    if (cart.length === 0) return null;
+    if (cart.length === 0) {
+      throw new Error("Your cart is empty.");
+    }
 
     const selectedAddress = addresses.find(
-      (address) => address.id === addressId
+      (address) => String(address.id) === String(addressId),
     );
 
-    if (!selectedAddress) return null;
+    if (!selectedAddress) {
+      throw new Error("Please select a delivery address.");
+    }
 
-    // Determine selected delivery type
+    // Delivery type
     const deliveryType =
-      deliverySchedule.deliveryType === "fast"
-        ? "fast"
-        : "scheduled";
+      deliverySchedule.deliveryType === "fast" ? "fast" : "scheduled";
 
-    // Save date and time only for scheduled delivery
     const deliveryDate =
       deliveryType === "scheduled"
         ? deliverySchedule.deliveryDate || null
@@ -168,31 +280,23 @@ export function ShopProvider({ children }) {
         : "Fast delivery - within 1 hour";
 
     // Validate scheduled delivery
-    if (
-      deliveryType === "scheduled" &&
-      (!deliveryDate || !deliveryTimeSlot)
-    ) {
-      throw new Error(
-        "Please select a delivery date and time slot."
-      );
+    if (deliveryType === "scheduled" && (!deliveryDate || !deliveryTimeSlot)) {
+      throw new Error("Please select a delivery date and time slot.");
     }
 
-    const deliveryEstimate =
-      deliveryType === "fast" ? "Within 1 hour" : null;
+    const deliveryEstimate = deliveryType === "fast" ? "Within 1 hour" : null;
 
-    // Calculate order total
+    // Calculate cart subtotal
     const subtotal = cart.reduce(
       (total, item) =>
-        total +
-        Number(item.price || 0) * Number(item.quantity || 0),
-      0
+        total + Number(item.price || 0) * Number(item.quantity || 0),
+      0,
     );
 
     const deliveryCharge = 0;
 
     const orderId =
-      typeof crypto !== "undefined" &&
-      typeof crypto.randomUUID === "function"
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : `order-${Date.now()}`;
 
@@ -213,19 +317,38 @@ export function ShopProvider({ children }) {
         "",
     }));
 
+    // Gift voucher details (redemption is not implemented here)
+    const giftVoucherCode =
+      paymentDetails.giftVoucherCode?.trim().toUpperCase() || null;
+
+    const giftVoucherDiscount = 0;
+
+    // Payment status
+    const paymentStatus =
+      paymentMethod === "Cash on Delivery" ? "Pending" : "Pending verification";
+
     // Prepare order for Supabase
     const newOrder = {
       id: orderId,
       order_number: orderNumber,
+
       items: orderItems,
-      delivery_address: { ...selectedAddress },
+
+      delivery_address: {
+        ...selectedAddress,
+      },
 
       payment_method: paymentMethod,
 
-      payment_status:
-        paymentMethod === "Cash on Delivery"
-          ? "Pending"
-          : "Demo payment - not processed",
+      payment_status: paymentStatus,
+
+      // Kept as null for compatibility with an existing
+      // Supabase column. No UTR is requested or stored.
+      payment_reference: null,
+
+      gift_voucher_code: giftVoucherCode,
+
+      gift_voucher_discount: giftVoucherDiscount,
 
       delivery_type: deliveryType,
       delivery_estimate: deliveryEstimate,
@@ -240,27 +363,34 @@ export function ShopProvider({ children }) {
     };
 
     try {
-      const { error } = await supabase
-        .from("orders")
-        .insert([newOrder]);
+      const { error } = await supabase.from("orders").insert([newOrder]);
 
       if (error) throw error;
+      // Automatically keep this delivery address in saved addresses
+      saveAddress(selectedAddress);
 
       // Save order locally
       const customerOrder = {
         ...newOrder,
+
         orderNumber,
+
         paymentMethod,
+
+        giftVoucherCode,
+
+        giftVoucherDiscount,
+
         createdAt: new Date().toISOString(),
-        address: { ...selectedAddress },
+
+        address: {
+          ...selectedAddress,
+        },
       };
 
-      setOrders((previous) => [
-        customerOrder,
-        ...previous,
-      ]);
+      setOrders((previous) => [customerOrder, ...previous]);
 
-      // Clear cart after successful order placement
+      // Clear cart only after successful Supabase insertion
       setCart([]);
 
       return customerOrder;
@@ -272,13 +402,8 @@ export function ShopProvider({ children }) {
 
   // Total number of cart items
   const cartCount = useMemo(
-    () =>
-      cart.reduce(
-        (total, item) =>
-          total + (Number(item.quantity) || 0),
-        0
-      ),
-    [cart]
+    () => cart.reduce((total, item) => total + (Number(item.quantity) || 0), 0),
+    [cart],
   );
 
   // Cart subtotal
@@ -286,12 +411,10 @@ export function ShopProvider({ children }) {
     () =>
       cart.reduce(
         (total, item) =>
-          total +
-          (Number(item.price) || 0) *
-            (Number(item.quantity) || 0),
-        0
+          total + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+        0,
       ),
-    [cart]
+    [cart],
   );
 
   const value = useMemo(
@@ -309,19 +432,39 @@ export function ShopProvider({ children }) {
       saveAddress,
       placeOrder,
     }),
-    [
-      cart,
-      wishlist,
-      addresses,
-      orders,
-      cartCount,
-      cartTotal,
-    ]
+    [cart, wishlist, addresses, orders, cartCount, cartTotal],
   );
 
   return (
     <ShopContext.Provider value={value}>
       {children}
+
+      {/* Persistent floating cart bar */}
+      {cartCount > 0 && (
+        <div className="purv-floating-cart">
+          {/* Left: Items and total */}
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <p className="text-sm font-bold text-white">
+              {cartCount} {cartCount === 1 ? "item" : "items"}
+            </p>
+
+            <p className="mt-1 text-lg font-extrabold text-white">
+              ₹{cartTotal.toLocaleString("en-IN")}
+            </p>
+
+            <p className="text-[10px] text-white/70">
+              Your cart is waiting for you
+            </p>
+          </div>
+
+          {/* Right: Cart button */}
+          <Link to="/cart" className="purv-floating-cart-button">
+            <ShoppingBag size={19} />
+            <span>Cart</span>
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
     </ShopContext.Provider>
   );
 }
@@ -330,9 +473,7 @@ export function useShop() {
   const context = useContext(ShopContext);
 
   if (!context) {
-    throw new Error(
-      "useShop must be used inside ShopProvider"
-    );
+    throw new Error("useShop must be used inside ShopProvider");
   }
 
   return context;

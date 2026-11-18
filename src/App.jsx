@@ -16,12 +16,18 @@ import Profile from "./pages/Profile";
 import GiftFinder from "./pages/GiftFinder";
 import Contact from "./pages/Contact";
 import ScrollToTop from "./components/ScrollToTop";
+import PaymentMethod from "./pages/PaymentMethod";
+import UpiPayment from "./pages/UpiPayment";
 
 import AdminLogin from "./pages/AdminLogin";
 import AdminProducts from "./pages/AdminProducts";
 import AdminOrders from "./pages/AdminOrders";
 import AdminCategories from "./pages/AdminCategories";
 import AdminHomepageOffers from "./pages/AdminHomepageOffers";
+import AdminDiscountOffers from "./pages/AdminDiscountOffers";
+import CompletedOrders from "./pages/CompletedOrders";
+import CancelledOrders from "./pages/CancelledOrders";
+import AdminBanners from "./pages/AdminBanners";
 function ComingSoon({ title }) {
   return (
     <main className="mx-auto max-w-5xl px-5 py-20 text-center">
@@ -93,6 +99,15 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
         <Route path="/admin/categories" element={<AdminCategories />} />
         <Route path="/admin/offers" element={<AdminHomepageOffers />} />
+        <Route
+          path="/admin/discount-offers"
+          element={<AdminDiscountOffers />}
+        />
+        <Route path="/admin/banners" element={<AdminBanners />} />
+        <Route path="/checkout/payment-method" element={<PaymentMethod />} />
+        <Route path="/checkout/upi" element={<UpiPayment />} />
+        <Route path="/admin/completed-orders" element={<CompletedOrders />} />
+        <Route path="/admin/cancelled-orders" element={<CancelledOrders />} />
       </Routes>
     </>
   );

@@ -208,10 +208,9 @@ export default function Categories() {
                 Shop by category<span className="text-[#ed9b28]">.</span>
               </h1>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#806e69] sm:text-base">
-                Discover thoughtful essentials, festive favourites and
-                beautiful little details for every occasion.
-              </p>
+             <p className="mt-3 w-full text-sm leading-6 text-[#806e69] whitespace-normal lg:whitespace-nowrap">
+  Discover thoughtful essentials, festive favourites and beautiful little details for every occasion.
+</p>
             </div>
 
             {!loading && !error && (
@@ -226,33 +225,6 @@ export default function Categories() {
           </div>
         </section>
 
-        {/* Decorative introduction banner */}
-        <section className="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-r from-[#421521] via-[#76233a] to-[#923d50] px-6 py-7 text-white sm:px-9 sm:py-9">
-          <div className="pointer-events-none absolute -right-8 -top-20 h-64 w-64 rounded-full border border-white/10" />
-          <div className="pointer-events-none absolute -right-1 top-8 h-40 w-40 rounded-full border border-white/10" />
-
-          <div className="relative z-10 max-w-2xl">
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#f6c58b]">
-              <Flower2 size={16} />
-              Curated with love
-            </div>
-
-            <h2 className="font-serif text-2xl leading-tight sm:text-3xl">
-              A little something for every celebration.
-            </h2>
-
-            <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">
-              From everyday rituals to festive moments, find everything
-              you need in one place.
-            </p>
-          </div>
-
-          <Sparkles
-            size={76}
-            strokeWidth={0.8}
-            className="absolute bottom-5 right-12 hidden rotate-12 text-[#f6c58b]/70 sm:block"
-          />
-        </section>
 
         {/* Loading state */}
         {loading && (
@@ -289,16 +261,6 @@ export default function Categories() {
         {/* Category grid */}
         {!loading && !error && categories.length > 0 && (
           <section>
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="font-serif text-2xl font-semibold text-[#421521]">
-                  Explore our categories
-                </h2>
-                <p className="mt-1 text-sm text-[#927b76]">
-                  Find your favourites, all in one place.
-                </p>
-              </div>
-            </div>
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
               {categories.map((category) => {
@@ -328,9 +290,7 @@ export default function Categories() {
                         </div>
                       )}
 
-                      <div className="absolute left-3 top-3 rounded-full border border-white/70 bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#76233a] backdrop-blur-sm">
-                        Purv edit
-                      </div>
+        
 
                       <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition duration-300 group-hover:bg-[#76233a] group-hover:text-white">
                         <ArrowRight size={17} />

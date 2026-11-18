@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -35,6 +34,16 @@ const emptyForm = {
   parent_id: "",
 };
 
+const MAX_SLIDES = 5;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 const slugify = (value) =>
   value
     .toLowerCase()
@@ -48,6 +57,9 @@ export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingSlides, setUploadingSlides] = useState(false);
+  const [uploadingMainImage, setUploadingMainImage] = useState(false);
+  const [loadingSlides, setLoadingSlides] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
 
   const [search, setSearch] = useState("");
@@ -58,6 +70,8 @@ export default function AdminCategories() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
+  const [slideImages, setSlideImages] = useState([]);
+
   const [notice, setNotice] = useState(null);
   const [formError, setFormError] = useState("");
 
@@ -65,6 +79,10 @@ export default function AdminCategories() {
     setNotice({ type, message });
     window.setTimeout(() => setNotice(null), 3500);
   };
+
+  // --------------------------------------------------
+  // LOAD CATEGORIES
+  // --------------------------------------------------
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
@@ -112,12 +130,16 @@ export default function AdminCategories() {
     loadCategories();
   }, [loadCategories]);
 
+  // --------------------------------------------------
+  // CATEGORY DATA
+  // --------------------------------------------------
+
   const mainCategories = useMemo(
     () =>
       categories
         .filter((item) => !item.parent_id)
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-    [categories]
+    [categories],
   );
 
   const getChildren = useCallback(
@@ -125,7 +147,7 @@ export default function AdminCategories() {
       categories
         .filter((item) => item.parent_id === parentId)
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-    [categories]
+    [categories],
   );
 
   const activeCount = categories.filter((item) => item.is_active).length;
@@ -137,7 +159,7 @@ export default function AdminCategories() {
 
     return mainCategories.filter((item) => {
       const children = categories.filter(
-        (child) => child.parent_id === item.id
+        (child) => child.parent_id === item.id,
       );
 
       const matchesSearch =
@@ -154,33 +176,274 @@ export default function AdminCategories() {
     });
   }, [search, visibilityFilter, mainCategories, categories]);
 
+  // --------------------------------------------------
+  // ADD / EDIT CATEGORY
+  // --------------------------------------------------
+
   const openAdd = (parentId = "") => {
     setEditing(null);
-    setForm({ ...emptyForm, parent_id: parentId });
+    setForm({
+      ...emptyForm,
+      parent_id: parentId,
+    });
+    setSlideImages([]);
     setFormError("");
     setShowForm(true);
   };
 
-  const openEdit = (category) => {
+  const openEdit = async (category) => {
     setEditing(category);
+
     setForm({
       name: category.name || "",
       description: category.description || "",
       image_url: category.image_url || "",
       parent_id: category.parent_id || "",
     });
+
+    setSlideImages([]);
     setFormError("");
     setShowForm(true);
+
+    // Main collections do not use subcategory slides.
+    if (!category.parent_id) return;
+
+    setLoadingSlides(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("subcategory_slides")
+        .select("*")
+        .eq("subcategory_slug", category.slug)
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+
+      setSlideImages(
+        (data || []).map((item) => ({
+          id: item.id,
+          image_url: item.image_url,
+          is_active: item.is_active,
+        })),
+      );
+    } catch (error) {
+      console.error("Slide loading error:", error);
+      notify("error", error.message || "Couldn't load subcategory images.");
+    } finally {
+      setLoadingSlides(false);
+    }
   };
 
   const closeForm = () => {
-    if (saving) return;
+    if (saving || uploadingSlides || uploadingMainImage) return;
 
     setShowForm(false);
     setEditing(null);
     setForm(emptyForm);
+    setSlideImages([]);
     setFormError("");
   };
+
+  // --------------------------------------------------
+  // SLIDESHOW IMAGE UPLOAD
+  // --------------------------------------------------
+
+  const uploadSubcategoryImages = async (event) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+
+    if (!files.length) return;
+
+    const remaining = MAX_SLIDES - slideImages.length;
+
+    if (remaining <= 0) {
+      notify("error", "You can upload a maximum of 5 images.");
+      input.value = "";
+      return;
+    }
+
+    if (files.length > remaining) {
+      notify("error", `You can upload only ${remaining} more image(s).`);
+      input.value = "";
+      return;
+    }
+
+    const validFiles = [];
+
+    for (const file of files) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        notify(
+          "error",
+          `${file.name} is not a supported image. Use JPG, PNG, WEBP or GIF.`,
+        );
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        notify("error", `${file.name} exceeds the 5 MB file limit.`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (!validFiles.length) {
+      input.value = "";
+      return;
+    }
+
+    setUploadingSlides(true);
+    setFormError("");
+
+    try {
+      const uploadedImages = [];
+
+      for (const file of validFiles) {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+
+        const filePath = `subcategory-slides/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("purv-products")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from("purv-products")
+          .getPublicUrl(filePath);
+
+        if (!data?.publicUrl) {
+          throw new Error("Could not generate the image URL.");
+        }
+
+        uploadedImages.push({
+          image_url: data.publicUrl,
+          is_active: true,
+        });
+      }
+
+      setSlideImages((previous) => [...previous, ...uploadedImages]);
+
+      notify("success", "Images uploaded successfully!");
+    } catch (error) {
+      console.error("Subcategory upload error:", error);
+
+      notify(
+        "error",
+        error.message || "Image upload failed. Please try again.",
+      );
+    } finally {
+      setUploadingSlides(false);
+      input.value = "";
+    }
+  };
+  // --------------------------------------------------
+  // MAIN COLLECTION IMAGE UPLOAD
+  // --------------------------------------------------
+
+  const uploadMainCollectionImage = async (event) => {
+    const input = event.target;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      notify("error", "Use JPG, PNG, WEBP or GIF images.");
+      input.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      notify("error", "Image size must be less than 5 MB.");
+      input.value = "";
+      return;
+    }
+
+    setUploadingMainImage(true);
+    setFormError("");
+
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+
+      const filePath = `main-collections/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("purv-products")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("purv-products")
+        .getPublicUrl(filePath);
+
+      if (!data?.publicUrl) {
+        throw new Error("Could not generate image URL.");
+      }
+
+      setForm((previous) => ({
+        ...previous,
+        image_url: data.publicUrl,
+      }));
+
+      notify("success", "Collection image uploaded successfully!");
+    } catch (error) {
+      console.error("Main collection image upload error:", error);
+
+      notify(
+        "error",
+        error.message || "Image upload failed. Please try again.",
+      );
+    } finally {
+      setUploadingMainImage(false);
+      input.value = "";
+    }
+  };
+
+  const moveSlideImage = (index, direction) => {
+    setSlideImages((previous) => {
+      const next = [...previous];
+      const target = index + direction;
+
+      if (target < 0 || target >= next.length) {
+        return previous;
+      }
+
+      [next[index], next[target]] = [next[target], next[index]];
+
+      return next;
+    });
+  };
+
+  const removeSlideImage = (index) => {
+    setSlideImages((previous) => previous.filter((_, i) => i !== index));
+  };
+
+  const toggleSlideImage = (index) => {
+    setSlideImages((previous) =>
+      previous.map((image, i) =>
+        i === index
+          ? {
+              ...image,
+              is_active: !image.is_active,
+            }
+          : image,
+      ),
+    );
+  };
+
+  // --------------------------------------------------
+  // CATEGORY SLUG
+  // --------------------------------------------------
 
   const createSlug = (name) => {
     const base = slugify(name);
@@ -197,6 +460,10 @@ export default function AdminCategories() {
     return candidate;
   };
 
+  // --------------------------------------------------
+  // SAVE CATEGORY AND SUBCATEGORY SLIDES
+  // --------------------------------------------------
+
   const saveCategory = async (event) => {
     event.preventDefault();
 
@@ -212,6 +479,11 @@ export default function AdminCategories() {
       return;
     }
 
+    if (uploadingSlides || uploadingMainImage || loadingSlides) {
+      setFormError("Please wait until image operations finish.");
+      return;
+    }
+
     setSaving(true);
     setFormError("");
 
@@ -223,6 +495,9 @@ export default function AdminCategories() {
         updated_at: new Date().toISOString(),
       };
 
+      let savedSlug = editing?.slug;
+      const isSubcategory = Boolean(form.parent_id || editing?.parent_id);
+
       if (editing) {
         const { error } = await supabase
           .from("store_categories")
@@ -230,49 +505,92 @@ export default function AdminCategories() {
           .eq("id", editing.id);
 
         if (error) throw error;
-
-        notify("success", "Collection updated successfully.");
       } else {
         const parentId = form.parent_id || null;
+
         const siblings = categories.filter(
-          (item) => item.parent_id === parentId
+          (item) => item.parent_id === parentId,
         );
 
-        const { error } = await supabase
+        const newSlug = createSlug(name);
+
+        const { data: createdCategory, error } = await supabase
           .from("store_categories")
           .insert({
             ...commonFields,
-            slug: createSlug(name),
+            slug: newSlug,
             parent_id: parentId,
             sort_order: siblings.length
               ? Math.max(...siblings.map((item) => item.sort_order || 0)) + 1
               : 1,
             is_active: true,
-          });
+          })
+          .select("slug")
+          .single();
 
         if (error) throw error;
 
-        notify(
-          "success",
-          parentId
-            ? "Subcategory created successfully."
-            : "Collection created successfully."
-        );
+        savedSlug = createdCategory.slug;
       }
+
+      // Save slideshow images only for subcategories.
+      if (isSubcategory) {
+        if (!savedSlug) {
+          throw new Error("Subcategory slug could not be found.");
+        }
+
+        // Remove old slide records for this subcategory.
+        const { error: deleteError } = await supabase
+          .from("subcategory_slides")
+          .delete()
+          .eq("subcategory_slug", savedSlug);
+
+        if (deleteError) throw deleteError;
+
+        // Insert the current images in their selected order.
+        if (slideImages.length > 0) {
+          const slideRows = slideImages.map((image, index) => ({
+            subcategory_slug: savedSlug,
+            image_url: image.image_url,
+            sort_order: index + 1,
+            is_active: image.is_active,
+          }));
+
+          const { error: slideError } = await supabase
+            .from("subcategory_slides")
+            .insert(slideRows);
+
+          if (slideError) throw slideError;
+        }
+      }
+
+      notify(
+        "success",
+        isSubcategory
+          ? "Subcategory and slideshow saved successfully."
+          : "Collection saved successfully.",
+      );
 
       setShowForm(false);
       setEditing(null);
       setForm(emptyForm);
+      setSlideImages([]);
+
       await loadCategories();
     } catch (error) {
       console.error("Save category error:", error);
+
       setFormError(
-        error.message || "We couldn't save this collection. Please try again."
+        error.message || "We couldn't save this collection. Please try again.",
       );
     } finally {
       setSaving(false);
     }
   };
+
+  // --------------------------------------------------
+  // VISIBILITY
+  // --------------------------------------------------
 
   const toggleVisibility = async (category) => {
     setUpdatingId(category.id);
@@ -290,7 +608,7 @@ export default function AdminCategories() {
 
       notify(
         "success",
-        `${category.name} is now ${category.is_active ? "hidden" : "visible"}.`
+        `${category.name} is now ${category.is_active ? "hidden" : "visible"}.`,
       );
 
       await loadCategories();
@@ -302,14 +620,16 @@ export default function AdminCategories() {
     }
   };
 
+  // --------------------------------------------------
+  // CATEGORY ORDER
+  // --------------------------------------------------
+
   const moveItem = async (category, direction) => {
     const siblings = categories
       .filter((item) => item.parent_id === category.parent_id)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-    const currentIndex = siblings.findIndex(
-      (item) => item.id === category.id
-    );
+    const currentIndex = siblings.findIndex((item) => item.id === category.id);
 
     const nextIndex = currentIndex + direction;
 
@@ -322,6 +642,7 @@ export default function AdminCategories() {
 
     try {
       const firstOrder = currentItem.sort_order || currentIndex + 1;
+
       const secondOrder = nextItem.sort_order || nextIndex + 1;
 
       const { error: firstError } = await supabase
@@ -355,6 +676,10 @@ export default function AdminCategories() {
     }
   };
 
+  // --------------------------------------------------
+  // EXPAND / COLLAPSE
+  // --------------------------------------------------
+
   const toggleExpanded = (id) => {
     setExpanded((previous) => ({
       ...previous,
@@ -374,6 +699,10 @@ export default function AdminCategories() {
 
   const collapseAll = () => setExpanded({});
 
+  // --------------------------------------------------
+  // CATEGORY ACTIONS
+  // --------------------------------------------------
+
   const CategoryActions = ({ category, index, total }) => (
     <div className="flex items-center gap-1 sm:gap-1.5">
       <button
@@ -383,7 +712,7 @@ export default function AdminCategories() {
         title="Move up"
         className="rounded-lg border border-[#eee3df] p-1.5 text-gray-500 transition hover:bg-[#fff6f1] hover:text-[#76233a] disabled:opacity-30 sm:p-2"
       >
-        <ArrowUp size={14} className="sm:h-[15px] sm:w-[15px]" />
+        <ArrowUp size={14} />
       </button>
 
       <button
@@ -393,7 +722,7 @@ export default function AdminCategories() {
         title="Move down"
         className="rounded-lg border border-[#eee3df] p-1.5 text-gray-500 transition hover:bg-[#fff6f1] hover:text-[#76233a] disabled:opacity-30 sm:p-2"
       >
-        <ArrowDown size={14} className="sm:h-[15px] sm:w-[15px]" />
+        <ArrowDown size={14} />
       </button>
 
       <button
@@ -402,7 +731,7 @@ export default function AdminCategories() {
         title="Edit collection"
         className="rounded-lg border border-[#eee3df] p-1.5 text-[#76233a] transition hover:bg-[#fff6f1] sm:p-2"
       >
-        <Pencil size={14} className="sm:h-[15px] sm:w-[15px]" />
+        <Pencil size={14} />
       </button>
 
       <button
@@ -417,15 +746,19 @@ export default function AdminCategories() {
         }`}
       >
         {updatingId === category.id ? (
-          <RefreshCw size={14} className="animate-spin sm:h-[15px] sm:w-[15px]" />
+          <RefreshCw size={14} className="animate-spin" />
         ) : category.is_active ? (
-          <EyeOff size={14} className="sm:h-[15px] sm:w-[15px]" />
+          <EyeOff size={14} />
         ) : (
-          <Eye size={14} className="sm:h-[15px] sm:w-[15px]" />
+          <Eye size={14} />
         )}
       </button>
     </div>
   );
+
+  // --------------------------------------------------
+  // MAIN PAGE
+  // --------------------------------------------------
 
   return (
     <AdminLayout
@@ -445,7 +778,8 @@ export default function AdminCategories() {
       }
     >
       <div className="space-y-6">
-        {/* Statistics */}
+        {/* STATISTICS */}
+
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             {
@@ -500,7 +834,8 @@ export default function AdminCategories() {
           })}
         </section>
 
-        {/* Category toolbar */}
+        {/* CATEGORY TOOLBAR */}
+
         <section className="rounded-2xl border border-[#eee5e0] bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -590,7 +925,8 @@ export default function AdminCategories() {
           </div>
         </section>
 
-        {/* Notifications */}
+        {/* NOTIFICATIONS */}
+
         {notice && (
           <div
             className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -604,17 +940,20 @@ export default function AdminCategories() {
             ) : (
               <AlertCircle size={17} className="mt-0.5 shrink-0" />
             )}
+
             <span>{notice.message}</span>
           </div>
         )}
 
-        {/* Category cards */}
+        {/* CATEGORY CARDS */}
+
         {loading ? (
           <div className="rounded-2xl border border-[#eee5e0] bg-white p-12 text-center">
             <RefreshCw
               className="mx-auto animate-spin text-[#76233a]"
               size={26}
             />
+
             <p className="mt-3 text-sm text-gray-500">
               Loading your collections...
             </p>
@@ -622,12 +961,15 @@ export default function AdminCategories() {
         ) : filteredCategories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#e6d4ce] bg-white px-5 py-14 text-center">
             <FolderOpen size={40} className="mx-auto text-[#c5a49c]" />
+
             <h3 className="mt-4 font-semibold text-[#29201f]">
               No collections found
             </h3>
+
             <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
               Try changing your search or filter, or create a new collection.
             </p>
+
             <button
               type="button"
               onClick={() => openAdd()}
@@ -638,12 +980,13 @@ export default function AdminCategories() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4">
             {filteredCategories.map((category) => {
               const children = getChildren(category.id);
               const isExpanded = Boolean(expanded[category.id]);
+
               const originalIndex = mainCategories.findIndex(
-                (item) => item.id === category.id
+                (item) => item.id === category.id,
               );
 
               return (
@@ -651,7 +994,8 @@ export default function AdminCategories() {
                   key={category.id}
                   className="group overflow-hidden rounded-[22px] border border-[#eee5e0] bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  {/* Collection image */}
+                  {/* COLLECTION IMAGE */}
+
                   <div className="relative h-28 overflow-hidden bg-gradient-to-br from-[#f8e8e5] to-[#fff4e8] sm:h-40">
                     {category.image_url ? (
                       <img
@@ -711,15 +1055,16 @@ export default function AdminCategories() {
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition hover:scale-105 sm:h-9 sm:w-9"
                       >
                         {isExpanded ? (
-                          <ChevronUp size={17} className="sm:h-[19px] sm:w-[19px]" />
+                          <ChevronUp size={17} />
                         ) : (
-                          <ChevronDown size={17} className="sm:h-[19px] sm:w-[19px]" />
+                          <ChevronDown size={17} />
                         )}
                       </button>
                     </div>
                   </div>
 
-                  {/* Collection information */}
+                  {/* COLLECTION INFORMATION */}
+
                   <div className="p-3 sm:p-4">
                     <p className="mb-3 min-h-[32px] text-[11px] leading-4 text-gray-500 sm:mb-4 sm:min-h-[36px] sm:text-xs sm:leading-5">
                       {category.description ||
@@ -738,12 +1083,13 @@ export default function AdminCategories() {
                         onClick={() => openAdd(category.id)}
                         className="inline-flex items-center gap-1 rounded-lg bg-[#fff1eb] px-2.5 py-2 text-[11px] font-bold text-[#76233a] transition hover:bg-[#f8e2da] sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs"
                       >
-                        <Plus size={14} className="sm:h-[15px] sm:w-[15px]" />
+                        <Plus size={14} />
                         Add subcategory
                       </button>
                     </div>
 
-                    {/* Subcategories */}
+                    {/* SUBCATEGORIES */}
+
                     {isExpanded && (
                       <div className="mt-3 border-t border-[#f0e7e3] pt-3 sm:mt-4 sm:pt-4">
                         <div className="mb-3 flex items-center justify-between">
@@ -763,9 +1109,11 @@ export default function AdminCategories() {
                               size={23}
                               className="mx-auto text-[#c9aaa1]"
                             />
+
                             <p className="mt-2 text-[11px] text-gray-500 sm:text-xs">
                               No subcategories in this collection yet.
                             </p>
+
                             <button
                               type="button"
                               onClick={() => openAdd(category.id)}
@@ -790,6 +1138,7 @@ export default function AdminCategories() {
                                     <p className="truncate text-xs font-semibold text-[#29201f] sm:text-sm">
                                       {child.name}
                                     </p>
+
                                     <p
                                       className={`mt-0.5 text-[10px] font-medium sm:text-[11px] ${
                                         child.is_active
@@ -813,7 +1162,7 @@ export default function AdminCategories() {
                                     title="Move up"
                                     className="rounded-lg border border-[#eee3df] p-1.5 text-gray-500 hover:bg-white disabled:opacity-30 sm:p-2"
                                   >
-                                    <ArrowUp size={13} className="sm:h-[14px] sm:w-[14px]" />
+                                    <ArrowUp size={13} />
                                   </button>
 
                                   <button
@@ -826,7 +1175,7 @@ export default function AdminCategories() {
                                     title="Move down"
                                     className="rounded-lg border border-[#eee3df] p-1.5 text-gray-500 hover:bg-white disabled:opacity-30 sm:p-2"
                                   >
-                                    <ArrowDown size={13} className="sm:h-[14px] sm:w-[14px]" />
+                                    <ArrowDown size={13} />
                                   </button>
 
                                   <button
@@ -835,7 +1184,7 @@ export default function AdminCategories() {
                                     title="Edit subcategory"
                                     className="rounded-lg border border-[#eee3df] p-1.5 text-[#76233a] hover:bg-white sm:p-2"
                                   >
-                                    <Pencil size={13} className="sm:h-[14px] sm:w-[14px]" />
+                                    <Pencil size={13} />
                                   </button>
 
                                   <button
@@ -848,12 +1197,12 @@ export default function AdminCategories() {
                                     {updatingId === child.id ? (
                                       <RefreshCw
                                         size={13}
-                                        className="animate-spin sm:h-[14px] sm:w-[14px]"
+                                        className="animate-spin"
                                       />
                                     ) : child.is_active ? (
-                                      <EyeOff size={13} className="sm:h-[14px] sm:w-[14px]" />
+                                      <EyeOff size={13} />
                                     ) : (
-                                      <Eye size={13} className="sm:h-[14px] sm:w-[14px]" />
+                                      <Eye size={13} />
                                     )}
                                   </button>
                                 </div>
@@ -881,7 +1230,10 @@ export default function AdminCategories() {
         )}
       </div>
 
-      {/* Add / Edit modal */}
+      {/* ------------------------------------------------
+          ADD / EDIT MODAL
+      ------------------------------------------------ */}
+
       {showForm && (
         <div
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-[#211316]/60 p-3 backdrop-blur-sm sm:p-5"
@@ -890,6 +1242,8 @@ export default function AdminCategories() {
           }}
         >
           <div className="my-auto w-full max-w-lg overflow-hidden rounded-[24px] bg-white shadow-2xl">
+            {/* MODAL HEADER */}
+
             <div className="relative overflow-hidden bg-gradient-to-r from-[#421521] to-[#76233a] px-5 py-5 text-white sm:px-6">
               <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full border-[20px] border-white/5" />
 
@@ -902,10 +1256,12 @@ export default function AdminCategories() {
 
                   <h2 className="font-serif text-2xl font-semibold">
                     {editing
-                      ? "Edit collection"
+                      ? editing.parent_id
+                        ? "Edit subcategory"
+                        : "Edit collection"
                       : form.parent_id
-                      ? "Add subcategory"
-                      : "Create collection"}
+                        ? "Add subcategory"
+                        : "Create collection"}
                   </h2>
 
                   <p className="mt-1 text-xs text-white/65">
@@ -916,7 +1272,7 @@ export default function AdminCategories() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  disabled={saving}
+                  disabled={saving || uploadingSlides || uploadingMainImage}
                   aria-label="Close form"
                   className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 disabled:opacity-50"
                 >
@@ -925,7 +1281,14 @@ export default function AdminCategories() {
               </div>
             </div>
 
-            <form onSubmit={saveCategory} className="space-y-4 p-5 sm:p-6">
+            {/* MODAL FORM */}
+
+            <form
+              onSubmit={saveCategory}
+              className="max-h-[75vh] space-y-4 overflow-y-auto p-5 sm:p-6"
+            >
+              {/* PARENT COLLECTION */}
+
               {!editing && (
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-[#29201f]">
@@ -934,15 +1297,17 @@ export default function AdminCategories() {
 
                   <select
                     value={form.parent_id}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((previous) => ({
                         ...previous,
                         parent_id: event.target.value,
-                      }))
-                    }
+                      }));
+                      setSlideImages([]);
+                    }}
                     className="w-full rounded-xl border border-[#eaded9] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#76233a] focus:ring-2 focus:ring-[#76233a]/10"
                   >
                     <option value="">Main collection</option>
+
                     {mainCategories
                       .filter((item) => item.is_active)
                       .map((item) => (
@@ -954,9 +1319,13 @@ export default function AdminCategories() {
                 </div>
               )}
 
+              {/* NAME */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-[#29201f]">
-                  Collection name *
+                  {form.parent_id || editing?.parent_id
+                    ? "Subcategory name *"
+                    : "Collection name *"}
                 </label>
 
                 <input
@@ -973,6 +1342,8 @@ export default function AdminCategories() {
                   className="w-full rounded-xl border border-[#eaded9] px-4 py-3 text-sm outline-none transition focus:border-[#76233a] focus:ring-2 focus:ring-[#76233a]/10"
                 />
               </div>
+
+              {/* DESCRIPTION */}
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-[#29201f]">
@@ -993,60 +1364,260 @@ export default function AdminCategories() {
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-[#29201f]">
-                  Collection image URL
-                </label>
+              {/* SUBCATEGORY SLIDESHOW UPLOAD */}
 
-                <div className="relative">
-                  <ImageIcon
-                    size={17}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
+              {form.parent_id || editing?.parent_id ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#29201f]">
+                        Subcategory slideshow
+                      </label>
 
-                  <input
-                    type="url"
-                    value={form.image_url}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        image_url: event.target.value,
-                      }))
-                    }
-                    placeholder="Paste an image link (optional)"
-                    className="w-full rounded-xl border border-[#eaded9] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-[#76233a] focus:ring-2 focus:ring-[#76233a]/10"
-                  />
-                </div>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Upload up to 5 images directly from your device.
+                      </p>
+                    </div>
 
-                {form.image_url && (
-                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#fff8f4] p-2">
-                    <img
-                      src={form.image_url}
-                      alt="Collection preview"
-                      className="h-16 w-20 rounded-lg object-cover"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                    <span className="text-xs text-gray-500">
-                      Image preview
+                    <span className="shrink-0 rounded-full bg-[#f8e8e5] px-3 py-1 text-xs font-bold text-[#76233a]">
+                      {slideImages.length}/5
                     </span>
                   </div>
-                )}
-              </div>
+
+                  {loadingSlides ? (
+                    <div className="rounded-xl border border-[#eaded9] p-5 text-center">
+                      <RefreshCw
+                        size={22}
+                        className="mx-auto animate-spin text-[#76233a]"
+                      />
+
+                      <p className="mt-2 text-xs text-gray-500">
+                        Loading saved slideshow images...
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* UPLOAD BUTTON */}
+
+                      <label
+                        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#cda9a0] bg-[#fffaf7] px-4 py-7 text-center transition hover:bg-[#fff1eb] ${
+                          slideImages.length >= MAX_SLIDES || uploadingSlides
+                            ? "cursor-not-allowed opacity-60"
+                            : "cursor-pointer"
+                        }`}
+                      >
+                        {uploadingSlides ? (
+                          <RefreshCw
+                            size={30}
+                            className="animate-spin text-[#76233a]"
+                          />
+                        ) : (
+                          <ImageIcon size={30} className="text-[#76233a]" />
+                        )}
+
+                        <span className="mt-2 text-sm font-bold text-[#76233a]">
+                          {uploadingSlides
+                            ? "Uploading images..."
+                            : "Upload from Device"}
+                        </span>
+
+                        <span className="mt-1 text-[11px] text-gray-500">
+                          JPG, PNG, WEBP or GIF · Maximum 5 MB each
+                        </span>
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          multiple
+                          disabled={
+                            uploadingSlides || slideImages.length >= MAX_SLIDES
+                          }
+                          onChange={uploadSubcategoryImages}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* IMAGE LIST */}
+
+                      {slideImages.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-600">
+                            Uploaded images · Arrange their display order
+                          </p>
+
+                          {slideImages.map((image, index) => (
+                            <div
+                              key={image.id || image.image_url}
+                              className="flex items-center gap-2 rounded-xl border border-[#eee5e0] bg-white p-2 sm:gap-3"
+                            >
+                              <img
+                                src={image.image_url}
+                                alt={`Slide ${index + 1}`}
+                                className="h-16 w-20 shrink-0 rounded-lg object-cover"
+                              />
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-[#76233a]">
+                                  Image {index + 1}
+                                </p>
+
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSlideImage(index)}
+                                  className={`mt-1 text-left text-[11px] font-semibold ${
+                                    image.is_active
+                                      ? "text-green-700"
+                                      : "text-gray-400"
+                                  }`}
+                                >
+                                  {image.is_active
+                                    ? "Visible to customers"
+                                    : "Hidden from customers"}
+                                </button>
+                              </div>
+
+                              <div className="flex shrink-0 items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => moveSlideImage(index, -1)}
+                                  disabled={index === 0}
+                                  className="rounded-lg border border-[#eaded9] p-1.5 text-gray-500 hover:bg-[#fff8f4] disabled:opacity-30"
+                                  title="Move up"
+                                >
+                                  <ArrowUp size={14} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => moveSlideImage(index, 1)}
+                                  disabled={index === slideImages.length - 1}
+                                  className="rounded-lg border border-[#eaded9] p-1.5 text-gray-500 hover:bg-[#fff8f4] disabled:opacity-30"
+                                  title="Move down"
+                                >
+                                  <ArrowDown size={14} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeSlideImage(index)}
+                                  className="rounded-lg border border-red-100 p-1.5 text-red-500 hover:bg-red-50"
+                                  title="Remove image"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {slideImages.length === 0 && (
+                        <p className="rounded-xl bg-[#fffaf7] p-3 text-center text-xs text-gray-500">
+                          No slideshow images added yet.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {/* MAIN COLLECTION IMAGE UPLOAD */}
+
+                  <label className="mb-2 block text-sm font-semibold text-[#29201f]">
+                    Main collection image
+                  </label>
+
+                  <label
+                    className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#d9b9ae] bg-[#fffaf7] px-4 py-7 text-center transition hover:border-[#76233a] hover:bg-[#fff1eb] ${
+                      uploadingMainImage ? "cursor-not-allowed opacity-60" : ""
+                    }`}
+                  >
+                    {uploadingMainImage ? (
+                      <RefreshCw
+                        size={30}
+                        className="animate-spin text-[#76233a]"
+                      />
+                    ) : (
+                      <ImageIcon size={30} className="text-[#76233a]" />
+                    )}
+
+                    <span className="mt-2 text-sm font-bold text-[#76233a]">
+                      {uploadingMainImage
+                        ? "Uploading image..."
+                        : "Upload from Device"}
+                    </span>
+
+                    <span className="mt-1 text-xs text-gray-500">
+                      Choose an image from your computer or phone
+                    </span>
+
+                    <span className="mt-1 text-[11px] text-gray-400">
+                      JPG, PNG, WEBP or GIF · Maximum 5 MB
+                    </span>
+
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={uploadMainCollectionImage}
+                      disabled={uploadingMainImage || saving}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* IMAGE PREVIEW */}
+
+                  {form.image_url && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-[#eee3df] bg-white p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Image preview
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((previous) => ({
+                              ...previous,
+                              image_url: "",
+                            }))
+                          }
+                          disabled={saving || uploadingMainImage}
+                          className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                        >
+                          Remove image
+                        </button>
+                      </div>
+
+                      <img
+                        src={form.image_url}
+                        alt="Main collection preview"
+                        className="h-40 w-full rounded-lg object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* FORM ERROR */}
 
               {formError && (
                 <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
                   <AlertCircle size={17} className="mt-0.5 shrink-0" />
+
                   <span>{formError}</span>
                 </div>
               )}
+
+              {/* FORM ACTIONS */}
 
               <div className="flex flex-col-reverse gap-2 border-t border-[#f1e8e4] pt-4 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeForm}
-                  disabled={saving}
+                  disabled={saving || uploadingSlides || uploadingMainImage}
                   className="rounded-xl border border-[#eaded9] px-5 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
@@ -1054,19 +1625,29 @@ export default function AdminCategories() {
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    uploadingSlides ||
+                    uploadingMainImage ||
+                    loadingSlides
+                  }
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#76233a] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#421521] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? (
+                  {saving || uploadingSlides || uploadingMainImage ? (
                     <RefreshCw size={16} className="animate-spin" />
                   ) : (
                     <Save size={16} />
                   )}
-                  {saving
-                    ? "Saving..."
-                    : editing
-                    ? "Save changes"
-                    : "Create collection"}
+
+                  {uploadingMainImage
+                    ? "Uploading image..."
+                    : uploadingSlides
+                      ? "Uploading images..."
+                      : saving
+                        ? "Saving..."
+                        : editing
+                          ? "Save changes"
+                          : "Create collection"}
                 </button>
               </div>
             </form>

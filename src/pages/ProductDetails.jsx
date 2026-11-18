@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -29,16 +28,41 @@ function formatPrice(value) {
   return `₹${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
+function getProductImages(item) {
+  let extraImages = item.images || item.image_urls || [];
+
+  // Handle both Supabase arrays and JSON string values.
+  if (typeof extraImages === "string") {
+    try {
+      extraImages = JSON.parse(extraImages);
+    } catch {
+      extraImages = [];
+    }
+  }
+
+  if (!Array.isArray(extraImages)) {
+    extraImages = [];
+  }
+
+  return [item.image_url || item.image || item.imageUrl || "", ...extraImages]
+    .filter(
+      (url, index, array) =>
+        typeof url === "string" && url.trim() && array.indexOf(url) === index,
+    )
+    .slice(0, 4);
+}
+
 function normalizeProduct(item) {
   if (!item) return null;
 
+  const images = getProductImages(item);
+
   return {
     ...item,
-    image: item.image || item.image_url || item.imageUrl || "",
-    originalPrice:
-      item.originalPrice ?? item.original_price ?? item.price ?? 0,
-    categorySlug:
-      item.categorySlug || item.category_slug || "",
+    image: images[0] || "",
+    galleryImages: images,
+    originalPrice: item.originalPrice ?? item.original_price ?? item.price ?? 0,
+    categorySlug: item.categorySlug || item.category_slug || "",
     category: item.category || "Puja Essentials",
   };
 }
@@ -51,14 +75,9 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [addedMessage, setAddedMessage] = useState(false);
-
-  const {
-    addToCart,
-    wishlist,
-    toggleWishlist,
-    cart,
-    changeQuantity,
-  } = useShop();
+  const [activeImage, setActiveImage] = useState(0);
+  const { addToCart, wishlist, toggleWishlist, cart, changeQuantity } =
+    useShop();
 
   useEffect(() => {
     let active = true;
@@ -67,6 +86,7 @@ export default function ProductDetails() {
       setLoading(true);
       setFetchError("");
       setProduct(null);
+      setActiveImage(0);
       setRelatedProducts([]);
 
       try {
@@ -171,12 +191,10 @@ export default function ProductDetails() {
   }
 
   const isWishlisted = wishlist.some(
-    (item) => String(item) === String(product.id)
+    (item) => String(item) === String(product.id),
   );
 
-  const cartItem = cart.find(
-    (item) => String(item.id) === String(product.id)
-  );
+  const cartItem = cart.find((item) => String(item.id) === String(product.id));
 
   const quantityInCart = cartItem?.quantity || 0;
 
@@ -209,9 +227,8 @@ export default function ProductDetails() {
       <Header />
 
       {/* Reduced top padding to remove extra blank space */}
-     <main className="min-h-screen px-4 pb-12 pt-4 sm:px-6 sm:pt-5 lg:px-8">
+      <main className="min-h-screen px-4 pb-12 pt-4 sm:px-6 sm:pt-5 lg:px-8">
         <div className="mx-auto max-w-[1250px]">
-
           {/* Breadcrumb */}
           <nav className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[#82736f] sm:text-sm">
             <Link to="/" className="hover:text-[#76233a]">
@@ -240,8 +257,7 @@ export default function ProductDetails() {
 
           {/* Product layout */}
           <section className="grid items-start gap-6 lg:grid-cols-[1fr_0.95fr] lg:gap-9">
-
-            {/* Product image */}
+            {/* Product image gallery */}
             <div className="lg:sticky lg:top-24">
               <div className="relative overflow-hidden rounded-2xl border border-[#f0e3d9] bg-white">
                 {discount > 0 && (
@@ -264,15 +280,17 @@ export default function ProductDetails() {
                   />
                 </button>
 
-                <div className="flex min-h-[300px] items-center justify-center bg-[#fbf8f4] p-5 sm:min-h-[440px]">
-                  {product.image ? (
+                {/* Main image */}
+                <div className="relative aspect-square overflow-hidden bg-white">
+                  {product.galleryImages?.length > 0 ? (
                     <img
-                      src={product.image}
-                      alt={product.name}
-                      className="max-h-[420px] w-full object-contain"
+                      key={product.galleryImages[activeImage]}
+                      src={product.galleryImages[activeImage]}
+                      alt={`${product.name} - Image ${activeImage + 1}`}
+                      className="h-full w-full object-contain"
                     />
                   ) : (
-                    <div className="text-center text-sm text-stone-400">
+                    <div className="flex h-full items-center justify-center text-sm text-stone-400">
                       Product image unavailable
                     </div>
                   )}
@@ -286,6 +304,33 @@ export default function ProductDetails() {
                   )}
                 </div>
               </div>
+
+              {/* Image thumbnails */}
+              {product.galleryImages?.length > 1 && (
+                <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                  {product.galleryImages.map((image, index) => (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      onClick={() => setActiveImage(index)}
+                      aria-label={`View product image ${index + 1}`}
+                      aria-pressed={activeImage === index}
+                      className={`h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-white transition ${
+                        activeImage === index
+                          ? "border-[#76233a] shadow-sm"
+                          : "border-[#f0e3d9] hover:border-[#c58a73]"
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} thumbnail ${index + 1}`}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Trust points */}
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -347,9 +392,11 @@ export default function ProductDetails() {
                   </span>
                 )}
 
-                <span className={`text-xs font-bold ${
-                  isOutOfStock ? "text-red-600" : "text-green-700"
-                }`}>
+                <span
+                  className={`text-xs font-bold ${
+                    isOutOfStock ? "text-red-600" : "text-green-700"
+                  }`}
+                >
                   {isOutOfStock ? "Out of stock" : "Available to order"}
                 </span>
               </div>
@@ -387,7 +434,8 @@ export default function ProductDetails() {
                       Ready for your next celebration
                     </p>
                     <p className="mt-1 text-xs text-[#82736f]">
-                      Add this product to your cart and review your order before checkout.
+                      Add this product to your cart and review your order before
+                      checkout.
                     </p>
                   </div>
                 </div>
@@ -479,13 +527,17 @@ export default function ProductDetails() {
               {/* Additional information */}
               <div className="mt-6 grid gap-3 border-t border-[#eadfd2] pt-5 sm:grid-cols-2">
                 <div className="flex items-start gap-3">
-                  <ShieldCheck size={20} className="mt-0.5 shrink-0 text-[#a34b3d]" />
+                  <ShieldCheck
+                    size={20}
+                    className="mt-0.5 shrink-0 text-[#a34b3d]"
+                  />
                   <div>
                     <p className="text-sm font-bold text-[#421521]">
                       Shop with confidence
                     </p>
                     <p className="mt-1 text-xs leading-5 text-[#82736f]">
-                      Review your cart and delivery details before placing an order.
+                      Review your cart and delivery details before placing an
+                      order.
                     </p>
                   </div>
                 </div>

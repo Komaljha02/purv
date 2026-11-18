@@ -20,7 +20,6 @@ import {
   FolderTree,
   Sparkles,
 } from "lucide-react";
-
 const BUCKET_NAME = "purv-products";
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -59,6 +58,28 @@ function getImageExtension(file) {
   };
 
   return extensions[file.type] || null;
+}
+
+// NEW HELPER: Gets up to 4 saved product images
+function getSavedProductImages(product) {
+  let images = product.images || [];
+
+  if (typeof images === "string") {
+    try {
+      images = JSON.parse(images);
+    } catch {
+      images = [];
+    }
+  }
+
+  if (!Array.isArray(images)) images = [];
+
+  return [product.image_url, ...images]
+    .filter(
+      (url, index, array) =>
+        typeof url === "string" && url.trim() && array.indexOf(url) === index,
+    )
+    .slice(0, 4);
 }
 
 function money(value) {
@@ -137,9 +158,7 @@ export default function AdminProducts() {
   const [storeCategories, setStoreCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
-  const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  const [imageItems, setImageItems] = useState([]);
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -253,30 +272,18 @@ export default function AdminProducts() {
     loadStoreCategories();
   }, [loadStoreCategories]);
 
-  // Image preview
-  useEffect(() => {
-    if (!selectedImage) {
-      setImagePreview("");
-      return undefined;
-    }
-
-    const previewUrl = URL.createObjectURL(selectedImage);
-    setImagePreview(previewUrl);
-
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [selectedImage]);
-
   function clearMessages() {
     setError("");
     setSuccess("");
   }
-
   function resetForm() {
+    imageItems.forEach((item) => {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    });
+
     setForm(emptyForm);
     setEditingId(null);
-    setSelectedImage(null);
-    setImagePreview("");
-    setRemoveExistingImage(false);
+    setImageItems([]);
     setShowForm(false);
   }
 
@@ -284,9 +291,7 @@ export default function AdminProducts() {
     clearMessages();
     setForm(emptyForm);
     setEditingId(null);
-    setSelectedImage(null);
-    setImagePreview("");
-    setRemoveExistingImage(false);
+    setImageItems([]);
     setShowForm(true);
 
     loadStoreCategories();
@@ -316,9 +321,13 @@ export default function AdminProducts() {
       stock: product.stock ?? 0,
     });
 
-    setSelectedImage(null);
-    setImagePreview("");
-    setRemoveExistingImage(false);
+    setImageItems(
+      getSavedProductImages(product).map((url) => ({
+        url,
+        file: null,
+        preview: url,
+      })),
+    );
     setShowForm(true);
 
     loadStoreCategories();
@@ -339,28 +348,53 @@ export default function AdminProducts() {
   function handleImageSelect(event) {
     clearMessages();
 
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
 
-    if (!file) return;
+    if (!files.length) return;
 
     const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-    if (!validTypes.includes(file.type)) {
-      setError("Choose a JPG, PNG, WebP, or GIF image.");
+    const remainingSlots = 4 - imageItems.length;
+
+    if (remainingSlots <= 0) {
+      setError("You can add a maximum of 4 product images.");
       event.target.value = "";
       return;
     }
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError("Image size must be 5 MB or less.");
-      event.target.value = "";
-      return;
+    const acceptedFiles = [];
+
+    for (const file of files) {
+      if (!validTypes.includes(file.type)) {
+        setError("Only JPG, PNG, WebP, or GIF images are allowed.");
+        continue;
+      }
+
+      if (file.size > MAX_IMAGE_SIZE) {
+        setError(`${file.name} is larger than 5 MB.`);
+        continue;
+      }
+
+      acceptedFiles.push(file);
     }
 
-    setSelectedImage(file);
-    setRemoveExistingImage(false);
+    const filesToAdd = acceptedFiles.slice(0, remainingSlots);
+
+    if (acceptedFiles.length > remainingSlots) {
+      setError("Only 4 images are allowed. Extra images were not added.");
+    }
+
+    setImageItems((previous) => [
+      ...previous,
+      ...filesToAdd.map((file) => ({
+        url: "",
+        file,
+        preview: URL.createObjectURL(file),
+      })),
+    ]);
+
+    event.target.value = "";
   }
-
   // Upload image to Supabase Storage
   async function uploadProductImage(file) {
     const extension = getImageExtension(file);
@@ -453,12 +487,29 @@ export default function AdminProducts() {
 
       if (!isAdmin) return;
 
-      let imageUrl = removeExistingImage ? "" : form.image_url.trim();
+      setUploading(true);
 
-      if (selectedImage) {
-        setUploading(true);
-        imageUrl = await uploadProductImage(selectedImage);
+      const uploadedImages = await Promise.all(
+        imageItems.map(async (item) => {
+          if (item.file) {
+            return await uploadProductImage(item.file);
+          }
+
+          return item.url;
+        }),
+      );
+
+      const finalImages = uploadedImages
+        .filter(Boolean)
+        .filter((url, index, array) => array.indexOf(url) === index)
+        .slice(0, 4);
+
+      // Keep the existing image URL as a fallback if no gallery image exists.
+      if (finalImages.length === 0 && form.image_url.trim()) {
+        finalImages.push(form.image_url.trim());
       }
+
+      const imageUrl = finalImages[0] || null;
 
       const productData = {
         name,
@@ -467,7 +518,8 @@ export default function AdminProducts() {
         original_price: originalPrice,
         category,
         category_slug: categorySlug,
-        image_url: imageUrl || null,
+        image_url: imageUrl,
+        images: finalImages,
         stock,
       };
       console.log("STEP 4: Sending product data to Supabase:", productData);
@@ -627,7 +679,6 @@ export default function AdminProducts() {
       active="products"
       actions={
         <>
-
           {/* Homepage Offers */}
           <button
             type="button"
@@ -1112,108 +1163,183 @@ export default function AdminProducts() {
                 )}
             </div>
 
-            {/* 4. Product image */}
+            {/* 4. Product images */}
             <div className="rounded-2xl border border-[#eee5e2] p-4 sm:p-5">
               <div className="mb-5 flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f8e8e5] font-bold text-[#76233a]">
                   04
                 </span>
+
                 <div>
-                  <h3 className="font-bold text-[#421521]">Product image</h3>
+                  <h3 className="font-bold text-[#421521]">Product images</h3>
                   <p className="text-xs text-gray-400">
-                    Add a clear image so customers can see your product.
+                    Upload up to 4 images. The first image will be your main
+                    product image.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
-                <div className="flex aspect-square w-full max-w-[180px] items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#dfc8ca] bg-[#fffaf8]">
-                  {imagePreview || (!removeExistingImage && form.image_url) ? (
-                    <img
-                      src={imagePreview || form.image_url}
-                      alt="Product preview"
-                      className="h-full w-full object-contain p-3"
-                    />
-                  ) : (
-                    <div className="text-center text-gray-300">
-                      <ImagePlus size={38} className="mx-auto" />
-                      <span className="mt-2 block text-xs font-medium">
-                        Image preview
-                      </span>
-                    </div>
-                  )}
+              <div className="space-y-5">
+                {/* Image upload */}
+                <div>
+                  <label
+                    htmlFor="product-images"
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#76233a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5d1b2d] ${
+                      imageItems.length >= 4
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
+                    }`}
+                  >
+                    <ImagePlus size={17} />
+                    Upload product images
+                  </label>
+
+                  <input
+                    id="product-images"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    onChange={handleImageSelect}
+                    disabled={imageItems.length >= 4}
+                    className="sr-only"
+                  />
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    JPG, PNG, WebP or GIF · Maximum 5 MB per image · Up to 4
+                    images
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-[#76233a]">
+                    {imageItems.length}/4 images selected
+                  </p>
                 </div>
 
-                <div className="min-w-0 space-y-4">
-                  <div>
-                    <label
-                      htmlFor="product-image"
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#76233a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5d1b2d]"
-                    >
-                      <Upload size={17} />
-                      Upload product image
-                    </label>
+                {/* Image previews */}
+                {imageItems.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {imageItems.map((item, index) => (
+                      <div
+                        key={`${item.url || item.file?.name}-${index}`}
+                        className="relative overflow-hidden rounded-2xl border border-[#eadbd7] bg-[#fffaf8] p-2"
+                      >
+                        <div className="aspect-square overflow-hidden rounded-xl bg-white">
+                          <img
+                            src={item.preview || item.url}
+                            alt={`Product image ${index + 1}`}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
 
-                    <input
-                      id="product-image"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleImageSelect}
-                      className="sr-only"
-                    />
+                        {index === 0 && (
+                          <span className="mt-2 block rounded-lg bg-[#76233a] px-2 py-1 text-center text-[10px] font-bold text-white">
+                            MAIN IMAGE
+                          </span>
+                        )}
 
-                    <p className="mt-2 text-xs text-gray-500">
-                      JPG, PNG, WebP or GIF · Maximum 5 MB
+                        {index !== 0 && (
+                          <span className="mt-2 block rounded-lg bg-[#f8e8e5] px-2 py-1 text-center text-[10px] font-semibold text-[#76233a]">
+                            IMAGE {index + 1}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.preview && item.file) {
+                              URL.revokeObjectURL(item.preview);
+                            }
+
+                            setImageItems((previous) => {
+                              const updated = previous.filter(
+                                (_, i) => i !== index,
+                              );
+
+                              setForm((oldForm) => ({
+                                ...oldForm,
+                                image_url: updated[0]?.url || "",
+                              }));
+
+                              return updated;
+                            });
+                          }}
+                          aria-label={`Remove image ${index + 1}`}
+                          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-600 shadow-md transition hover:bg-red-50"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-[#dfc8ca] bg-[#fffaf8] text-center">
+                    <ImagePlus size={35} className="text-[#c7a4a8]" />
+                    <p className="mt-2 text-sm font-semibold text-gray-600">
+                      No product images added
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Upload up to 4 images to create a product gallery.
                     </p>
                   </div>
+                )}
 
-                  <div>
-                    <label
-                      htmlFor="image_url"
-                      className="mb-2 block text-sm font-semibold text-gray-700"
-                    >
-                      Or use an image URL
-                    </label>
-                    <input
-                      id="image_url"
-                      name="image_url"
-                      type="url"
-                      value={form.image_url}
-                      onChange={(event) => {
-                        handleChange(event);
-                        setRemoveExistingImage(false);
-                        setSelectedImage(null);
-                      }}
-                      placeholder="https://example.com/product-image.jpg"
-                      className={inputClass}
-                    />
-                  </div>
+                {/* Optional image URL */}
+                <div>
+                  <label
+                    htmlFor="image_url"
+                    className="mb-2 block text-sm font-semibold text-gray-700"
+                  >
+                    Or use a main image URL
+                  </label>
 
-                  {(selectedImage || form.image_url || imagePreview) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedImage(null);
-                        setForm((previous) => ({
-                          ...previous,
-                          image_url: "",
-                        }));
-                        setRemoveExistingImage(true);
+                  <input
+                    id="image_url"
+                    name="image_url"
+                    type="url"
+                    value={form.image_url}
+                    onChange={(event) => {
+                      const value = event.target.value;
 
-                        const fileInput =
-                          document.getElementById("product-image");
-                        if (fileInput) fileInput.value = "";
-                      }}
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:underline"
-                    >
-                      <Trash2 size={14} />
-                      Remove image
-                    </button>
-                  )}
+                      setForm((previous) => ({
+                        ...previous,
+                        image_url: value,
+                      }));
+
+                      setImageItems((previous) => {
+                        if (!value.trim()) {
+                          return previous;
+                        }
+
+                        if (previous.length === 0) {
+                          return [
+                            {
+                              url: value.trim(),
+                              file: null,
+                              preview: value.trim(),
+                            },
+                          ];
+                        }
+
+                        const updated = [...previous];
+
+                        updated[0] = {
+                          url: value.trim(),
+                          file: null,
+                          preview: value.trim(),
+                        };
+
+                        return updated;
+                      });
+                    }}
+                    placeholder="https://example.com/product-image.jpg"
+                    className={inputClass}
+                  />
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    This URL will be used as the main image.
+                  </p>
                 </div>
               </div>
             </div>
-
             {/* Save actions */}
             <div className="flex flex-col-reverse gap-3 rounded-2xl border border-[#eee5e2] bg-[#fffaf8] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <p className="text-xs text-gray-500">

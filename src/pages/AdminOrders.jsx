@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   RefreshCw,
   MapPin,
@@ -127,7 +128,6 @@ function formatDate(value) {
   });
 }
 
-
 function formatDeliveryDate(value) {
   if (!value) return "Not scheduled";
 
@@ -154,7 +154,6 @@ function getDeliverySchedule(order) {
   };
 }
 
-
 function localDate(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -169,9 +168,19 @@ function downloadCSV(orders) {
   if (!orders.length) return;
 
   const headers = [
-    "Order Number", "Customer", "Phone", "Address", "Products", "Quantity",
-    "Subtotal", "Delivery", "Total", "Payment Method", "Payment Status",
-    "Order Status", "Date",
+    "Order Number",
+    "Customer",
+    "Phone",
+    "Address",
+    "Products",
+    "Quantity",
+    "Subtotal",
+    "Delivery",
+    "Total",
+    "Payment Method",
+    "Payment Status",
+    "Order Status",
+    "Date",
   ];
 
   const rows = orders.map((order) => {
@@ -181,8 +190,15 @@ function downloadCSV(orders) {
       getOrderNumber(order),
       address.fullName || "Customer",
       address.phone || "",
-      [address.house, address.area, address.city, address.state, address.pincode]
-        .filter(Boolean).join(", "),
+      [
+        address.house,
+        address.area,
+        address.city,
+        address.state,
+        address.pincode,
+      ]
+        .filter(Boolean)
+        .join(", "),
       items.map((item) => item.name || "Product").join("; "),
       items.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
       order.subtotal || 0,
@@ -284,10 +300,15 @@ function OrderDetails({
             <p className="text-xs font-semibold tracking-wider text-[#a36b25]">
               ORDER DETAILS
             </p>
-            <h2 id="order-detail-title" className="mt-1 text-xl font-bold text-[#76233a]">
+            <h2
+              id="order-detail-title"
+              className="mt-1 text-xl font-bold text-[#76233a]"
+            >
               {getOrderNumber(order)}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">{formatDate(order.created_at)}</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {formatDate(order.created_at)}
+            </p>
           </div>
           <button
             type="button"
@@ -302,16 +323,28 @@ function OrderDetails({
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl bg-[#fff8ef] p-4">
             <h3 className="font-bold text-gray-800">Customer details</h3>
-            <p className="mt-2 text-sm text-gray-700">{address.fullName || "Customer"}</p>
+            <p className="mt-2 text-sm text-gray-700">
+              {address.fullName || "Customer"}
+            </p>
             <p className="mt-2 flex items-start gap-2 text-sm text-gray-500">
               <MapPin size={15} className="mt-0.5 shrink-0" />
               <span>
-                {[address.house, address.area, address.city, address.state, address.pincode]
-                  .filter(Boolean).join(", ") || "Address unavailable"}
+                {[
+                  address.house,
+                  address.area,
+                  address.city,
+                  address.state,
+                  address.pincode,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "Address unavailable"}
               </span>
             </p>
             {address.phone && (
-              <a href={`tel:${address.phone}`} className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#76233a]">
+              <a
+                href={`tel:${address.phone}`}
+                className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#76233a]"
+              >
                 <Phone size={14} />
                 {address.phone}
               </a>
@@ -323,7 +356,9 @@ function OrderDetails({
             <p className="mt-2 text-sm text-gray-600">
               Method: {order.payment_method || "Not available"}
             </p>
-            <p className="mt-3 text-xl font-bold text-[#76233a]">{money(order.total)}</p>
+            <p className="mt-3 text-xl font-bold text-[#76233a]">
+              {money(order.total)}
+            </p>
             <div className="mt-3">
               <label className="mb-1.5 block text-xs font-semibold text-gray-600">
                 {codOrder ? "Cash collection status" : "Payment status"}
@@ -335,13 +370,15 @@ function OrderDetails({
                 className={`${inputClass} ${getPaymentStatusStyle(order.payment_status || "Pending")}`}
               >
                 {getPaymentOptions(order).map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
                 ))}
               </select>
               {codOrder && (
                 <p className="mt-2 text-xs leading-5 text-gray-500">
-                  Keep this as Pending until the customer pays the delivery person.
-                  Change it to Paid after receiving the cash.
+                  Keep this as Pending until the customer pays the delivery
+                  person. Change it to Paid after receiving the cash.
                 </p>
               )}
             </div>
@@ -362,16 +399,23 @@ function OrderDetails({
           ) : (
             <div className="divide-y divide-gray-100">
               {items.map((item, index) => (
-                <div key={`${item.id || item.name || "item"}-${index}`} className="flex items-center gap-3 py-3">
+                <div
+                  key={`${item.id || item.name || "item"}-${index}`}
+                  className="flex items-center gap-3 py-3"
+                >
                   <ProductImage item={item} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-800">{item.name || "Product"}</p>
+                    <p className="font-semibold text-gray-800">
+                      {item.name || "Product"}
+                    </p>
                     <p className="mt-1 text-xs text-gray-500">
                       {money(item.price)} × {Number(item.quantity || 0)}
                     </p>
                   </div>
                   <p className="shrink-0 font-bold text-[#76233a]">
-                    {money(Number(item.price || 0) * Number(item.quantity || 0))}
+                    {money(
+                      Number(item.price || 0) * Number(item.quantity || 0),
+                    )}
                   </p>
                 </div>
               ))}
@@ -380,29 +424,46 @@ function OrderDetails({
         </div>
 
         <div className="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm">
-          <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><strong>{money(order.subtotal)}</strong></div>
-          <div className="flex justify-between"><span className="text-gray-500">Delivery charge</span><strong>{money(order.delivery_charge)}</strong></div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Subtotal</span>
+            <strong>{money(order.subtotal)}</strong>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Delivery charge</span>
+            <strong>{money(order.delivery_charge)}</strong>
+          </div>
           <div className="flex justify-between border-t border-gray-100 pt-3 text-base">
-            <strong>Total amount</strong><strong className="text-[#76233a]">{money(order.total)}</strong>
+            <strong>Total amount</strong>
+            <strong className="text-[#76233a]">{money(order.total)}</strong>
           </div>
         </div>
 
         <div className="mt-6 rounded-xl border border-rose-100 bg-[#fffaf5] p-4">
-          <label className="mb-2 block text-sm font-bold text-gray-800">Update order status</label>
+          <label className="mb-2 block text-sm font-bold text-gray-800">
+            Update order status
+          </label>
           <select
             value={order.status || "Order placed"}
             disabled={updatingOrder}
             onChange={(event) => onUpdateOrder(order, event.target.value)}
             className={inputClass}
           >
-            {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            {orderStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
           </select>
           <p className="mt-2 text-xs text-gray-500">
             The customer's order tracking page will reflect the updated status.
           </p>
         </div>
 
-        <button type="button" onClick={onClose} className="mt-5 w-full rounded-xl bg-[#76233a] px-4 py-3 text-sm font-bold text-white hover:bg-[#421521]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 w-full rounded-xl bg-[#76233a] px-4 py-3 text-sm font-bold text-white hover:bg-[#421521]"
+        >
           Close details
         </button>
       </div>
@@ -411,6 +472,7 @@ function OrderDetails({
 }
 
 export default function AdminOrders() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -428,7 +490,10 @@ export default function AdminOrders() {
   const [showFilters, setShowFilters] = useState(false);
 
   const verifyAdmin = useCallback(async () => {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       window.location.replace("/admin/login");
@@ -501,8 +566,12 @@ export default function AdminOrders() {
       if (updateError) throw updateError;
 
       const updatedOrder = { ...order, status: newStatus };
-      setOrders((previous) => previous.map((item) => item.id === order.id ? updatedOrder : item));
-      setSelectedOrder((previous) => previous?.id === order.id ? updatedOrder : previous);
+      setOrders((previous) =>
+        previous.map((item) => (item.id === order.id ? updatedOrder : item)),
+      );
+      setSelectedOrder((previous) =>
+        previous?.id === order.id ? updatedOrder : previous,
+      );
       setSuccess(`Order status updated to ${newStatus}.`);
     } catch (err) {
       console.error("Updating order status failed:", err);
@@ -534,8 +603,12 @@ export default function AdminOrders() {
       if (updateError) throw updateError;
 
       const updatedOrder = { ...order, payment_status: newPaymentStatus };
-      setOrders((previous) => previous.map((item) => item.id === order.id ? updatedOrder : item));
-      setSelectedOrder((previous) => previous?.id === order.id ? updatedOrder : previous);
+      setOrders((previous) =>
+        previous.map((item) => (item.id === order.id ? updatedOrder : item)),
+      );
+      setSelectedOrder((previous) =>
+        previous?.id === order.id ? updatedOrder : previous,
+      );
       setSuccess(
         isCOD(order)
           ? `Cash collection status updated to ${newPaymentStatus}.`
@@ -558,10 +631,23 @@ export default function AdminOrders() {
     setPage(1);
   }
 
-  const pendingCount = orders.filter((order) => ["Order placed", "Confirmed"].includes(order.status)).length;
-  const processingCount = orders.filter((order) => ["Packed", "Shipped"].includes(order.status)).length;
+  const pendingCount = orders.filter((order) =>
+    ["Order placed", "Confirmed"].includes(order.status || "Order placed"),
+  ).length;
+
+  const processingCount = orders.filter((order) =>
+    ["Packed", "Shipped"].includes(order.status),
+  ).length;
+
+  const deliveredCount = orders.filter(
+    (order) => order.status === "Delivered",
+  ).length;
+  const cancelledCount = orders.filter(
+    (order) => order.status === "Cancelled",
+  ).length;
   const codPendingCount = orders.filter(
-    (order) => isCOD(order) && (order.payment_status || "Pending") === "Pending",
+    (order) =>
+      isCOD(order) && (order.payment_status || "Pending") === "Pending",
   ).length;
 
   const totalSales = orders.reduce((sum, order) => {
@@ -572,13 +658,27 @@ export default function AdminOrders() {
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    const result = orders.filter((order) => {
+    // Active orders only: delivered and cancelled orders are excluded.
+    const activeOrders = orders.filter(
+      (order) => !["Delivered", "Cancelled"].includes(order.status),
+    );
+
+    const result = activeOrders.filter((order) => {
       const address = getAddress(order);
       const searchableText = [
-        getOrderNumber(order), address.fullName, address.phone, address.city,
-        address.pincode, order.payment_method, order.payment_status, order.status,
+        getOrderNumber(order),
+        address.fullName,
+        address.phone,
+        address.city,
+        address.pincode,
+        order.payment_method,
+        order.payment_status,
+        order.status,
         ...getItems(order).map((item) => item.name),
-      ].filter(Boolean).join(" ").toLowerCase();
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
       const matchesSearch = !query || searchableText.includes(query);
       const matchesStatus = filter === "All" || order.status === filter;
@@ -642,7 +742,13 @@ export default function AdminOrders() {
         <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <AlertCircle size={18} className="shrink-0" />
           <p className="flex-1 break-words">{error}</p>
-          <button type="button" onClick={() => setError("")} aria-label="Dismiss error"><X size={17} /></button>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            aria-label="Dismiss error"
+          >
+            <X size={17} />
+          </button>
         </div>
       )}
 
@@ -650,24 +756,89 @@ export default function AdminOrders() {
         <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
           <CheckCircle size={18} className="shrink-0" />
           <p className="flex-1">{success}</p>
-          <button type="button" onClick={() => setSuccess("")} aria-label="Dismiss message"><X size={17} /></button>
+          <button
+            type="button"
+            onClick={() => setSuccess("")}
+            aria-label="Dismiss message"
+          >
+            <X size={17} />
+          </button>
         </div>
       )}
 
-      <section className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <StatCard title="Total orders" value={orders.length} subtitle="All customer orders" icon={ShoppingBag} color="bg-rose-50 text-[#76233a]" />
-        <StatCard title="Order value" value={money(totalSales)} subtitle="Excluding cancelled" icon={IndianRupee} color="bg-amber-50 text-amber-700" />
-        <StatCard title="Pending" value={pendingCount} subtitle="Placed or confirmed" icon={Clock} color="bg-orange-50 text-orange-700" />
-        <StatCard title="Processing" value={processingCount} subtitle="Packed or shipped" icon={Truck} color="bg-blue-50 text-blue-700" />
-        <StatCard title="COD collection pending" value={codPendingCount} subtitle="Cash not yet collected" icon={Wallet} color="bg-purple-50 text-purple-700" />
+      <section className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
+        <StatCard
+          title="Total orders"
+          value={orders.length}
+          subtitle="All customer orders"
+          icon={ShoppingBag}
+          color="bg-rose-50 text-[#76233a]"
+        />
+
+        <StatCard
+          title="Order value"
+          value={money(totalSales)}
+          subtitle="Excluding cancelled"
+          icon={IndianRupee}
+          color="bg-amber-50 text-amber-700"
+        />
+
+        <StatCard
+          title="Pending"
+          value={pendingCount}
+          subtitle="Placed or confirmed"
+          icon={Clock}
+          color="bg-orange-50 text-orange-700"
+        />
+
+        <StatCard
+          title="Processing"
+          value={processingCount}
+          subtitle="Packed or shipped"
+          icon={Truck}
+          color="bg-blue-50 text-blue-700"
+        />
+
+        {/* Delivered Orders Card */}
+        <button
+          type="button"
+          onClick={() => navigate("/admin/completed-orders")}
+          className="text-left transition hover:-translate-y-1"
+        >
+          <StatCard
+            title="Delivered orders"
+            value={deliveredCount}
+            subtitle="View completed orders"
+            icon={CheckCircle}
+            color="bg-green-50 text-green-700"
+          />
+        </button>
+        {/* Cancelled Orders Card */}
+        <button
+          type="button"
+          onClick={() => navigate("/admin/cancelled-orders")}
+          className="text-left transition hover:-translate-y-1"
+        >
+          <StatCard
+            title="Cancelled orders"
+            value={cancelledCount}
+            subtitle="View cancelled orders"
+            icon={X}
+            color="bg-red-50 text-red-700"
+          />
+        </button>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-[#eee2dc] bg-white shadow-sm">
         <div className="border-b border-gray-100 p-4 sm:p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <h3 className="font-serif text-xl font-bold text-[#421521]">All orders</h3>
-              <p className="mt-1 text-xs text-gray-500">{filteredOrders.length} orders matching your filters</p>
+              <h3 className="font-serif text-xl font-bold text-[#421521]">
+                All orders
+              </h3>
+              <p className="mt-1 text-xs text-gray-500">
+                {filteredOrders.length} orders matching your filters
+              </p>
             </div>
             <button
               type="button"
@@ -680,7 +851,10 @@ export default function AdminOrders() {
           </div>
 
           <div className="relative mt-4">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               type="search"
               value={search}
@@ -694,29 +868,65 @@ export default function AdminOrders() {
             <div className="mt-4 rounded-xl bg-[#fffaf5] p-4">
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">Order status</label>
-                  <select value={filter} onChange={(event) => setFilter(event.target.value)} className={inputClass}>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+                    Order status
+                  </label>
+                  <select
+                    value={filter}
+                    onChange={(event) => setFilter(event.target.value)}
+                    className={inputClass}
+                  >
                     <option value="All">All statuses</option>
-                    {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                    {orderStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">From date</label>
-                  <input type="date" value={fromDate} max={toDate || undefined} onChange={(event) => setFromDate(event.target.value)} className={inputClass} />
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+                    From date
+                  </label>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    max={toDate || undefined}
+                    onChange={(event) => setFromDate(event.target.value)}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">To date</label>
-                  <input type="date" value={toDate} min={fromDate || undefined} onChange={(event) => setToDate(event.target.value)} className={inputClass} />
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+                    To date
+                  </label>
+                  <input
+                    type="date"
+                    value={toDate}
+                    min={fromDate || undefined}
+                    onChange={(event) => setToDate(event.target.value)}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">Sort orders</label>
-                  <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className={inputClass}>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+                    Sort orders
+                  </label>
+                  <select
+                    value={sortOrder}
+                    onChange={(event) => setSortOrder(event.target.value)}
+                    className={inputClass}
+                  >
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
                   </select>
                 </div>
               </div>
-              <button type="button" onClick={resetFilters} className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#76233a] hover:underline">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#76233a] hover:underline"
+              >
                 <RotateCcw size={14} /> Clear all filters
               </button>
             </div>
@@ -732,8 +942,14 @@ export default function AdminOrders() {
           <div className="flex min-h-64 flex-col items-center justify-center p-6 text-center">
             <Package size={40} className="text-gray-300" />
             <h4 className="mt-3 font-semibold">No orders found</h4>
-            <p className="mt-1 text-sm text-gray-500">Try another search or clear your filters.</p>
-            <button type="button" onClick={resetFilters} className="mt-4 rounded-xl bg-[#76233a] px-4 py-2.5 text-sm font-semibold text-white">
+            <p className="mt-1 text-sm text-gray-500">
+              Try another search or clear your filters.
+            </p>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="mt-4 rounded-xl bg-[#76233a] px-4 py-2.5 text-sm font-semibold text-white"
+            >
               Show all orders
             </button>
           </div>
@@ -749,7 +965,9 @@ export default function AdminOrders() {
                     <th className="px-5 py-4 font-semibold">Total</th>
                     <th className="px-5 py-4 font-semibold">Payment</th>
                     <th className="px-5 py-4 font-semibold">Order status</th>
-                    <th className="px-5 py-4 text-right font-semibold">Action</th>
+                    <th className="px-5 py-4 text-right font-semibold">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -757,41 +975,78 @@ export default function AdminOrders() {
                     const address = getAddress(order);
                     const codOrder = isCOD(order);
                     return (
-                      <tr key={order.id} className="transition hover:bg-[#fffdfa]">
+                      <tr
+                        key={order.id}
+                        className="transition hover:bg-[#fffdfa]"
+                      >
                         <td className="px-5 py-4">
-                          <p className="font-bold text-[#76233a]">{getOrderNumber(order)}</p>
-                          <p className="mt-1 text-xs text-gray-400">{getItems(order).length} items</p>
+                          <p className="font-bold text-[#76233a]">
+                            {getOrderNumber(order)}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {getItems(order).length} items
+                          </p>
                         </td>
                         <td className="px-5 py-4">
-                          <p className="font-semibold text-gray-800">{address.fullName || "Customer"}</p>
-                          <p className="mt-1 text-xs text-gray-500">{address.phone || "No phone"}</p>
+                          <p className="font-semibold text-gray-800">
+                            {address.fullName || "Customer"}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {address.phone || "No phone"}
+                          </p>
                         </td>
-                        <td className="px-5 py-4 text-sm text-gray-500">{formatDate(order.created_at)}</td>
-                        <td className="px-5 py-4 font-bold text-gray-800">{money(order.total)}</td>
+                        <td className="px-5 py-4 text-sm text-gray-500">
+                          {formatDate(order.created_at)}
+                        </td>
+                        <td className="px-5 py-4 font-bold text-gray-800">
+                          {money(order.total)}
+                        </td>
                         <td className="min-w-52 px-5 py-4">
-                          <p className="text-sm text-gray-700">{order.payment_method || "Unavailable"}</p>
+                          <p className="text-sm text-gray-700">
+                            {order.payment_method || "Unavailable"}
+                          </p>
                           <select
                             value={order.payment_status || "Pending"}
                             disabled={updatingPaymentId === order.id}
-                            onChange={(event) => updatePaymentStatus(order, event.target.value)}
+                            onChange={(event) =>
+                              updatePaymentStatus(order, event.target.value)
+                            }
                             className={`mt-2 w-full max-w-40 rounded-full border px-3 py-2 text-xs font-semibold outline-none disabled:opacity-50 ${getPaymentStatusStyle(order.payment_status || "Pending")}`}
                           >
-                            {getPaymentOptions(order).map((status) => <option key={status} value={status}>{status}</option>)}
+                            {getPaymentOptions(order).map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
                           </select>
-                          {codOrder && <p className="mt-1 text-[10px] text-gray-400">Cash collection</p>}
+                          {codOrder && (
+                            <p className="mt-1 text-[10px] text-gray-400">
+                              Cash collection
+                            </p>
+                          )}
                         </td>
                         <td className="px-5 py-4">
                           <select
                             value={order.status || "Order placed"}
                             disabled={updatingId === order.id}
-                            onChange={(event) => updateOrderStatus(order, event.target.value)}
+                            onChange={(event) =>
+                              updateOrderStatus(order, event.target.value)
+                            }
                             className={`max-w-40 rounded-full border px-3 py-2 text-xs font-semibold outline-none disabled:opacity-50 ${getOrderStatusStyle(order.status)}`}
                           >
-                            {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                            {orderStatuses.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <button type="button" onClick={() => setSelectedOrder(order)} className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-[#76233a] hover:bg-rose-50">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrder(order)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-[#76233a] hover:bg-rose-50"
+                          >
                             <Eye size={15} /> View
                           </button>
                         </td>
@@ -810,16 +1065,27 @@ export default function AdminOrders() {
                   <article key={order.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="break-all font-bold text-[#76233a]">{getOrderNumber(order)}</p>
-                        <p className="mt-1 text-xs text-gray-400">{formatDate(order.created_at)}</p>
+                        <p className="break-all font-bold text-[#76233a]">
+                          {getOrderNumber(order)}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {formatDate(order.created_at)}
+                        </p>
                       </div>
-                      <p className="shrink-0 font-bold text-[#76233a]">{money(order.total)}</p>
+                      <p className="shrink-0 font-bold text-[#76233a]">
+                        {money(order.total)}
+                      </p>
                     </div>
                     <div className="mt-3">
-                      <p className="font-semibold text-gray-800">{address.fullName || "Customer"}</p>
-                      <p className="mt-1 text-xs text-gray-500">{address.phone || "No phone number"}</p>
+                      <p className="font-semibold text-gray-800">
+                        {address.fullName || "Customer"}
+                      </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        {getItems(order).length} products · {order.payment_method || "Payment unavailable"}
+                        {address.phone || "No phone number"}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {getItems(order).length} products ·{" "}
+                        {order.payment_method || "Payment unavailable"}
                       </p>
                     </div>
                     <div className="mt-4 rounded-xl bg-[#fffaf5] p-3">
@@ -829,23 +1095,41 @@ export default function AdminOrders() {
                       <select
                         value={order.payment_status || "Pending"}
                         disabled={updatingPaymentId === order.id}
-                        onChange={(event) => updatePaymentStatus(order, event.target.value)}
+                        onChange={(event) =>
+                          updatePaymentStatus(order, event.target.value)
+                        }
                         className={`${inputClass} ${getPaymentStatusStyle(order.payment_status || "Pending")}`}
                       >
-                        {getPaymentOptions(order).map((status) => <option key={status} value={status}>{status}</option>)}
+                        {getPaymentOptions(order).map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
                       </select>
-                      <label className="mb-1.5 mt-3 block text-xs font-semibold text-gray-600">Order status</label>
+                      <label className="mb-1.5 mt-3 block text-xs font-semibold text-gray-600">
+                        Order status
+                      </label>
                       <select
                         value={order.status || "Order placed"}
                         disabled={updatingId === order.id}
-                        onChange={(event) => updateOrderStatus(order, event.target.value)}
+                        onChange={(event) =>
+                          updateOrderStatus(order, event.target.value)
+                        }
                         className={`${inputClass} ${getOrderStatusStyle(order.status)}`}
                       >
-                        {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                        {orderStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="mt-3 flex justify-end">
-                      <button type="button" onClick={() => setSelectedOrder(order)} className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-[#76233a]">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrder(order)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-[#76233a]"
+                      >
                         <Eye size={15} /> View details
                       </button>
                     </div>
@@ -859,7 +1143,9 @@ export default function AdminOrders() {
         {!loading && filteredOrders.length > 0 && (
           <div className="flex flex-col justify-between gap-3 border-t border-gray-100 bg-white p-4 sm:flex-row sm:items-center sm:px-5">
             <p className="text-xs text-gray-500">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of{" "}
+              {filteredOrders.length} orders
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -870,11 +1156,15 @@ export default function AdminOrders() {
               >
                 <ChevronLeft size={15} /> Previous
               </button>
-              <span className="px-2 text-xs font-semibold text-gray-600">{currentPage} / {totalPages}</span>
+              <span className="px-2 text-xs font-semibold text-gray-600">
+                {currentPage} / {totalPages}
+              </span>
               <button
                 type="button"
                 disabled={currentPage === totalPages}
-                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                onClick={() =>
+                  setPage((value) => Math.min(totalPages, value + 1))
+                }
                 className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:bg-gray-50 disabled:opacity-40"
               >
                 Next <ChevronRight size={15} />
@@ -884,7 +1174,9 @@ export default function AdminOrders() {
         )}
       </section>
 
-      <p className="mt-6 text-center text-xs text-gray-400">PURV · Admin order management</p>
+      <p className="mt-6 text-center text-xs text-gray-400">
+        PURV · Admin order management
+      </p>
 
       <OrderDetails
         order={selectedOrder}

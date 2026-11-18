@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -6,13 +5,10 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  CreditCard,
-  LockKeyhole,
   MapPin,
   PackageCheck,
   ShieldCheck,
   ShoppingBag,
-  Wallet,
   Sparkles,
   CalendarDays,
   Clock,
@@ -25,21 +21,21 @@ export default function Payment() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { cart, cartTotal, addresses, placeOrder } = useShop();
+  const { cart, cartTotal, addresses } = useShop();
 
-  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
   const [deliveryType, setDeliveryType] = useState("scheduled");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState("");
   const [error, setError] = useState("");
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const addressId = location.state?.addressId;
-  const address = addresses.find((item) => item.id === addressId);
+  const address = addresses.find(
+    (item) => String(item.id) === String(addressId),
+  );
 
   const itemCount = cart.reduce(
-    (total, item) => total + item.quantity,
-    0
+    (total, item) => total + (Number(item.quantity) || 0),
+    0,
   );
 
   const subtotal = cartTotal;
@@ -63,60 +59,36 @@ export default function Payment() {
     "6:00 PM - 9:00 PM",
   ];
 
-  async function handlePlaceOrder() {
-    if (isPlacingOrder) return;
-
+  // Continue to payment method selection
+  function handlePlaceOrder() {
     setError("");
 
     if (cart.length === 0) {
-      setError(
-        "Your cart is empty. Please add products before placing an order."
-      );
+      setError("Your cart is empty.");
       return;
     }
 
     if (!address) {
-      setError("Please select your delivery address before continuing.");
+      setError("Please select your delivery address.");
       return;
     }
 
-    // Date and time are required only for scheduled delivery
-    if (
-      deliveryType === "scheduled" &&
-      (!deliveryDate || !deliveryTimeSlot)
-    ) {
+    if (deliveryType === "scheduled" && (!deliveryDate || !deliveryTimeSlot)) {
       setError("Please select your preferred delivery date and time slot.");
       return;
     }
 
-    setIsPlacingOrder(true);
-
-    try {
-      const order = await placeOrder(addressId, paymentMethod, {
-        deliveryType,
-        deliveryDate:
-          deliveryType === "scheduled" ? deliveryDate : null,
-        deliveryTimeSlot:
-          deliveryType === "scheduled" ? deliveryTimeSlot : null,
-      });
-
-      if (order) {
-        navigate(`/order-success/${order.id}`, {
-          replace: true,
-        });
-      } else {
-        setError("We couldn't place your order. Please try again.");
-        setIsPlacingOrder(false);
-      }
-    } catch (err) {
-      console.error("Order placement failed:", err);
-
-      setError(
-        err.message || "Something went wrong while placing your order."
-      );
-
-      setIsPlacingOrder(false);
-    }
+    navigate("/checkout/payment-method", {
+      state: {
+        addressId,
+        deliverySchedule: {
+          deliveryType,
+          deliveryDate: deliveryType === "scheduled" ? deliveryDate : null,
+          deliveryTimeSlot:
+            deliveryType === "scheduled" ? deliveryTimeSlot : null,
+        },
+      },
+    });
   }
 
   return (
@@ -125,8 +97,10 @@ export default function Payment() {
 
       <main className="!mt-0 !pt-0 min-h-screen bg-[#fffaf4] px-4 pb-16 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
+          {/* Back button */}
           <Link
             to="/checkout/address"
+            state={{ addressId }}
             className="inline-flex items-center gap-2 text-sm font-semibold text-[#8b3026] transition hover:text-[#54251f]"
           >
             <ArrowLeft size={17} />
@@ -141,13 +115,13 @@ export default function Payment() {
             </div>
 
             <h1 className="font-serif text-3xl font-bold text-[#54251f] sm:text-4xl">
-              Payment & Review
+              Delivery & Review
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#806b61] sm:text-base">
-              Review your delivery details, schedule your delivery, choose how
-              you want to pay, and get your festive favourites delivered to your
-              door.
+              Review your delivery details, choose when you would like your
+              festive favourites delivered, and continue to select your payment
+              method.
             </p>
           </div>
 
@@ -166,7 +140,7 @@ export default function Payment() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#8b3026] text-white">
                 2
               </span>
-              <span>Payment</span>
+              <span>Delivery</span>
             </div>
 
             <div className="h-px flex-1 bg-[#e8d8c8]" />
@@ -175,7 +149,7 @@ export default function Payment() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e8d8c8]">
                 3
               </span>
-              <span className="hidden sm:inline">Confirmation</span>
+              <span className="hidden sm:inline">Payment</span>
             </div>
           </div>
 
@@ -280,7 +254,7 @@ export default function Payment() {
                   </div>
                 </div>
 
-                {/* Delivery options and scheduling */}
+                {/* Delivery options */}
                 <div className="rounded-3xl border border-[#f0dfca] bg-white p-5 shadow-sm sm:p-7">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff0dc] text-[#8b3026]">
@@ -323,10 +297,7 @@ export default function Payment() {
                         </span>
 
                         {deliveryType === "fast" && (
-                          <CheckCircle2
-                            size={19}
-                            className="text-green-600"
-                          />
+                          <CheckCircle2 size={19} className="text-green-600" />
                         )}
                       </div>
 
@@ -356,18 +327,12 @@ export default function Payment() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 font-bold text-[#54251f]">
-                          <CalendarDays
-                            size={19}
-                            className="text-[#b45324]"
-                          />
+                          <CalendarDays size={19} className="text-[#b45324]" />
                           Scheduled Delivery
                         </span>
 
                         {deliveryType === "scheduled" && (
-                          <CheckCircle2
-                            size={19}
-                            className="text-green-600"
-                          />
+                          <CheckCircle2 size={19} className="text-green-600" />
                         )}
                       </div>
 
@@ -488,7 +453,7 @@ export default function Payment() {
 
                         <p className="mt-1 text-sm text-green-700">
                           {new Date(
-                            `${deliveryDate}T00:00:00`
+                            `${deliveryDate}T00:00:00`,
                           ).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "long",
@@ -507,140 +472,6 @@ export default function Payment() {
                       continue.
                     </p>
                   )}
-                </div>
-
-                {/* Payment method */}
-                <div className="rounded-3xl border border-[#f0dfca] bg-white p-5 shadow-sm sm:p-7">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff0dc] text-[#8b3026]">
-                      <CreditCard size={21} />
-                    </div>
-
-                    <div>
-                      <h2 className="text-lg font-bold text-[#54251f]">
-                        Payment method
-                      </h2>
-
-                      <p className="mt-1 text-sm text-gray-500">
-                        Choose your preferred payment option
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 space-y-3">
-                    {/* Cash on delivery */}
-                    <label
-                      className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition sm:p-5 ${
-                        paymentMethod === "Cash on Delivery"
-                          ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
-                          : "border-[#eee3d8] hover:border-[#d8b9a3]"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="Cash on Delivery"
-                        checked={paymentMethod === "Cash on Delivery"}
-                        onChange={() =>
-                          setPaymentMethod("Cash on Delivery")
-                        }
-                        className="mt-1 h-4 w-4 accent-[#8b3026]"
-                      />
-
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f8eadb] text-[#8b3026]">
-                        <Wallet size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-[#54251f]">
-                            Cash on Delivery
-                          </span>
-
-                          {paymentMethod === "Cash on Delivery" && (
-                            <CheckCircle2
-                              size={17}
-                              className="text-green-600"
-                            />
-                          )}
-                        </div>
-
-                        <p className="mt-1 text-sm leading-5 text-gray-500">
-                          Pay when your order arrives at your doorstep.
-                        </p>
-                      </div>
-                    </label>
-
-                    {/* Demo online payment */}
-                    <label
-                      className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition sm:p-5 ${
-                        paymentMethod === "Demo Online Payment"
-                          ? "border-[#8b3026] bg-[#fff8ef] ring-1 ring-[#8b3026]"
-                          : "border-[#eee3d8] hover:border-[#d8b9a3]"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="Demo Online Payment"
-                        checked={paymentMethod === "Demo Online Payment"}
-                        onChange={() =>
-                          setPaymentMethod("Demo Online Payment")
-                        }
-                        className="mt-1 h-4 w-4 accent-[#8b3026]"
-                      />
-
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f8eadb] text-[#8b3026]">
-                        <CreditCard size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-[#54251f]">
-                            Online Payment
-                          </span>
-
-                          {paymentMethod === "Demo Online Payment" && (
-                            <CheckCircle2
-                              size={17}
-                              className="text-green-600"
-                            />
-                          )}
-                        </div>
-
-                        <p className="mt-1 text-sm leading-5 text-gray-500">
-                          Demo checkout only. No real payment will be
-                          processed.
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
-                            UPI demo
-                          </span>
-
-                          <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
-                            Card demo
-                          </span>
-
-                          <span className="rounded-md border border-[#eee3d8] px-2 py-1 text-xs font-medium text-gray-500">
-                            Net banking demo
-                          </span>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div className="mt-5 flex items-start gap-3 rounded-xl bg-[#f7f5ed] p-4">
-                    <ShieldCheck
-                      size={20}
-                      className="mt-0.5 shrink-0 text-green-700"
-                    />
-
-                    <p className="text-xs leading-5 text-gray-600">
-                      This is a frontend-only shopping demo. Online payment
-                      options do not connect to a bank or payment provider.
-                    </p>
-                  </div>
                 </div>
 
                 {/* Items in order */}
@@ -669,9 +500,7 @@ export default function Payment() {
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#fff5e9]">
                           <img
                             src={
-                              item.image ||
-                              item.image_url ||
-                              item.product_image
+                              item.image || item.image_url || item.product_image
                             }
                             alt={item.name}
                             className="h-full w-full object-cover"
@@ -693,9 +522,9 @@ export default function Payment() {
 
                           <p className="mt-2 text-sm font-bold text-[#8b3026]">
                             ₹
-                            {Number(
-                              item.price * item.quantity
-                            ).toLocaleString("en-IN")}
+                            {Number(item.price * item.quantity).toLocaleString(
+                              "en-IN",
+                            )}
                           </p>
                         </div>
                       </div>
@@ -735,9 +564,7 @@ export default function Payment() {
                         <span className="text-gray-500">Delivery fee</span>
 
                         <span className="font-semibold text-green-700">
-                          {deliveryCharge === 0
-                            ? "FREE"
-                            : `₹${deliveryCharge}`}
+                          {deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge}`}
                         </span>
                       </div>
                     </div>
@@ -763,7 +590,7 @@ export default function Payment() {
                           <p className="mt-2 text-sm font-semibold text-[#54251f]">
                             {deliveryDate
                               ? new Date(
-                                  `${deliveryDate}T00:00:00`
+                                  `${deliveryDate}T00:00:00`,
                                 ).toLocaleDateString("en-IN", {
                                   day: "numeric",
                                   month: "short",
@@ -773,8 +600,7 @@ export default function Payment() {
                           </p>
 
                           <p className="mt-1 text-xs text-gray-600">
-                            {deliveryTimeSlot ||
-                              "Time slot not selected"}
+                            {deliveryTimeSlot || "Time slot not selected"}
                           </p>
                         </>
                       )}
@@ -793,11 +619,10 @@ export default function Payment() {
                     </div>
 
                     <p className="mt-2 text-xs leading-5 text-gray-500">
-                      {paymentMethod === "Cash on Delivery"
-                        ? "Pay this amount when your order is delivered."
-                        : "Demo payment selected. No money will be charged."}
+                      Choose your preferred payment method on the next page.
                     </p>
 
+                    {/* Validation error */}
                     {error && (
                       <div
                         role="alert"
@@ -807,27 +632,19 @@ export default function Payment() {
                       </div>
                     )}
 
+                    {/* Continue button */}
                     <button
                       type="button"
                       onClick={handlePlaceOrder}
-                      disabled={isPlacingOrder}
-                      className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#8b3026] px-5 py-4 font-bold text-white shadow-sm transition hover:bg-[#68271f] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#8b3026] px-5 py-4 font-bold text-white shadow-sm transition hover:bg-[#68271f]"
                     >
-                      {isPlacingOrder ? (
-                        "Placing your order..."
-                      ) : (
-                        <>
-                          Place Order
-                          <ArrowRight size={18} />
-                        </>
-                      )}
+                      Continue to Payment
+                      <ArrowRight size={18} />
                     </button>
 
                     <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-                      <LockKeyhole size={14} />
-                      <span>
-                        Checkout demo · No real payment processing
-                      </span>
+                      <ShieldCheck size={15} />
+                      <span>Secure checkout experience</span>
                     </div>
 
                     <Link
@@ -847,9 +664,8 @@ export default function Payment() {
                   />
 
                   <p className="text-xs leading-5 text-gray-500">
-                    Your order details are managed by the Purv frontend demo.
-                    Connect a backend and a payment provider before accepting
-                    real customer payments.
+                    Your delivery details are saved for the next payment step.
+                    Select your payment method before placing your order.
                   </p>
                 </div>
               </aside>

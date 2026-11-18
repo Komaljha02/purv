@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
@@ -12,13 +11,42 @@ import {
   ShieldCheck,
   Layers,
   Headset,
+  Tag,
+  Image,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 const navigation = [
-  { label: "Products", path: "/admin/products", key: "products", icon: Package },
-  { label: "Categories", path: "/admin/categories", key: "categories", icon: Layers },
-  { label: "Orders", path: "/admin/orders", key: "orders", icon: ShoppingBag },
+  {
+    label: "Products",
+    path: "/admin/products",
+    key: "products",
+    icon: Package,
+  },
+  {
+    label: "Categories",
+    path: "/admin/categories",
+    key: "categories",
+    icon: Layers,
+  },
+  {
+    label: "Homepage Banners",
+    path: "/admin/banners",
+    key: "banners",
+    icon: Image,
+  },
+  {
+    label: "Orders",
+    path: "/admin/orders",
+    key: "orders",
+    icon: ShoppingBag,
+  },
+  {
+    label: "Discount Offers",
+    path: "/admin/discount-offers",
+    key: "discount-offers",
+    icon: Tag,
+  },
 ];
 
 export default function AdminLayout({
@@ -106,9 +134,7 @@ export default function AdminLayout({
                   <Icon size={19} />
                   <span>{item.label}</span>
 
-                  {selected && (
-                    <ChevronRight size={16} className="ml-auto" />
-                  )}
+                  {selected && <ChevronRight size={16} className="ml-auto" />}
                 </NavLink>
               );
             })}

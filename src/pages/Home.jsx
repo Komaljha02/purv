@@ -2,19 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  ShoppingCart,
   Truck,
   ShieldCheck,
-  Heart,
   Headset,
   Sparkles,
   PackageCheck,
-  ChevronRight,
 } from "lucide-react";
 
 import Header from "../components/Header";
+import HeroSlideshow from "../components/HeroSlideshow";
 import { supabase } from "../lib/supabase";
-import { useShop } from "../context/ShopContext";
 import ProductCard from "../components/ProductCard";
 
 // Fallback images are used only when a category has no image_url in Supabase.
@@ -69,28 +66,40 @@ function LotusMark({ className = "", size = 24 }) {
 
 const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
+
 function SectionTitle({ title, subtitle, link = "/categories" }) {
   return (
-    <div className="mb-3 flex items-end justify-between gap-3">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[#ead9bd] pb-3">
       <div>
-        <h2 className="font-serif text-xl font-bold text-[#641a2b] sm:text-2xl lg:text-3xl">
+        <div className="mb-1 flex items-center gap-2">
+          <Sparkles size={15} className="text-[#c18b42]" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a47743]">
+            Handpicked for you
+          </span>
+        </div>
+
+        <h2 className="font-serif text-2xl font-bold tracking-tight text-[#701d30] sm:text-3xl">
           {title}
         </h2>
 
         {subtitle && (
-          <p className="mt-1 text-xs text-stone-500 sm:text-sm">{subtitle}</p>
+          <p className="mt-1 text-xs text-stone-500 sm:text-sm">
+            {subtitle}
+          </p>
         )}
       </div>
 
       <Link
         to={link}
-        className="flex shrink-0 items-center gap-1 text-xs font-bold text-[#7c2032] transition hover:text-[#b17a38]"
+        className="mb-1 inline-flex items-center gap-2 rounded-full border border-[#e7c995] bg-white px-4 py-2 text-xs font-bold text-[#791d30] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff3df] hover:shadow-md sm:text-sm"
       >
-        View All <ArrowRight size={15} />
+        View All
+        <ArrowRight size={15} />
       </Link>
     </div>
   );
 }
+
 
 function CategoryCard({ category }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -100,7 +109,7 @@ function CategoryCard({ category }) {
 
   return (
     <Link to={`/category/${category.slug}`} className="group min-w-0">
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-[#eee0d0] bg-[#f8ead9] sm:rounded-2xl">
+     <div className="relative aspect-[5/4] overflow-hidden rounded-xl border border-[#eee0d0] bg-[#f8ead9] sm:rounded-2xl">
         {image && !imageFailed ? (
           <img
             src={image}
@@ -132,111 +141,61 @@ function CategoryCard({ category }) {
   );
 }
 
-function ProductTile({ product, onAdd }) {
-  const [added, setAdded] = useState(false);
+function DiscountCircle({ product }) {
   const [imageFailed, setImageFailed] = useState(false);
 
-  const image = product.image_url || product.image || product.imageUrl || "";
-
   const price = Number(product.price || 0);
-
   const originalPrice = Number(
     product.original_price ?? product.originalPrice ?? 0,
   );
 
-  const discount =
-    originalPrice > price && originalPrice > 0
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0;
+  const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
 
-  function handleAdd() {
-    onAdd(product);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1500);
-  }
+  const image = product.image_url || product.image || product.imageUrl || "";
 
   return (
-    <article className="group min-w-0 overflow-hidden rounded-xl border border-[#eee4d9] bg-white p-1.5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl sm:p-2">
-      <Link
-        to={`/product/${product.id}`}
-        className="relative block aspect-square overflow-hidden rounded-lg bg-[#fbf3e9]"
-      >
+    <Link
+      to={`/product/${product.id}`}
+      className="group w-[105px] shrink-0 text-center sm:w-[130px]"
+    >
+      <div className="relative mx-auto h-[85px] w-[85px] overflow-hidden rounded-full border-[3px] border-[#e5c783] bg-gradient-to-br from-[#fff7e7] to-[#f1dfbd] shadow-md transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl sm:h-[100px] sm:w-[100px]">
         {image && !imageFailed ? (
           <img
             src={image}
             alt={product.name}
             loading="lazy"
             onError={() => setImageFailed(true)}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#fff8e8] via-[#f8e8c9] to-[#f4dfb6] text-[#8b2938]">
-            <LotusMark size={42} />
-            <span className="px-2 text-center text-[10px] font-semibold tracking-wide text-[#6c2932]">
-              PURV PUJA SAMAGRI
-            </span>
+          <div className="flex h-full items-center justify-center">
+            <LotusMark size={40} />
           </div>
         )}
 
-        {discount > 0 && (
-          <span className="absolute left-1 top-1 rounded bg-[#8b2638] px-1.5 py-1 text-[9px] font-bold text-white sm:left-2 sm:top-2 sm:text-[10px]">
-            {discount}% OFF
-          </span>
-        )}
-
-        <button
-          type="button"
-          aria-label="Add to wishlist"
-          onClick={(event) => event.preventDefault()}
-          className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-[#8b2638] shadow-sm sm:right-2 sm:top-2 sm:h-8 sm:w-8"
-        >
-          <Heart size={15} />
-        </button>
-      </Link>
-
-      <div className="px-1 pb-1 pt-2">
-        <Link to={`/product/${product.id}`}>
-          <h3 className="line-clamp-2 min-h-8 text-[11px] font-bold leading-4 text-[#3d292b] hover:text-[#8b2638] sm:text-sm">
-            {product.name}
-          </h3>
-        </Link>
-
-        {product.description && (
-          <p className="mt-0.5 line-clamp-1 text-[9px] text-stone-500 sm:text-[11px]">
-            {product.description}
-          </p>
-        )}
-
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-extrabold text-[#722033] sm:text-sm">
-            {money(price)}
-          </span>
-
-          {originalPrice > price && (
-            <span className="text-[10px] text-stone-400 line-through">
-              {money(originalPrice)}
-            </span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={handleAdd}
-          className={`mt-2 flex min-h-8 w-full items-center justify-center gap-1 rounded-md px-1.5 py-2 text-[10px] font-bold text-white transition sm:min-h-9 sm:text-xs ${
-            added ? "bg-green-700" : "bg-[#791d30] hover:bg-[#531421]"
-          }`}
-        >
-          <ShoppingCart size={13} />
-          {added ? "Added!" : "Add to Cart"}
-        </button>
+        <span className="absolute bottom-0 left-0 right-0 bg-[#791d30] py-1 text-[10px] font-extrabold tracking-wide text-white sm:text-xs">
+          {discount}% OFF
+        </span>
       </div>
-    </article>
+
+      <h3 className="mt-2 line-clamp-2 min-h-8 text-[11px] font-bold leading-4 text-[#492b2d] transition group-hover:text-[#8b2938] sm:text-sm">
+        {product.name}
+      </h3>
+
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+        <span className="text-xs font-extrabold text-[#791d30] sm:text-sm">
+          {money(price)}
+        </span>
+
+        <span className="text-[10px] text-stone-400 line-through">
+          {money(originalPrice)}
+        </span>
+      </div>
+    </Link>
   );
 }
 
 export default function Home() {
-  const { addToCart } = useShop();
-
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
@@ -245,6 +204,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [productError, setProductError] = useState("");
 
+  // Existing Exciting Offers settings.
   const [offerSettings, setOfferSettings] = useState({
     title: "Exciting Offers",
     subtitle: "Discover amazing deals on your favourite products.",
@@ -253,10 +213,21 @@ export default function Home() {
     product_ids: [],
     view_all_link: "/categories",
   });
+
   const [offersLoading, setOffersLoading] = useState(true);
   const [offersError, setOffersError] = useState("");
 
-  // Load categories directly from Supabase in admin-defined order.
+  // Extra Discount Offers settings
+  const [discountSettings, setDiscountSettings] = useState({
+    title: "Extra Exciting Offers",
+    subtitle: "Special prices on handpicked puja essentials.",
+    is_enabled: true,
+    product_ids: [],
+  });
+
+  const [discountSettingsLoading, setDiscountSettingsLoading] = useState(true);
+
+  // Load categories from Supabase.
   useEffect(() => {
     let active = true;
 
@@ -291,7 +262,6 @@ export default function Home() {
 
     loadCategories();
 
-    // Refresh category order when the admin changes it in another tab.
     const channel = supabase
       .channel("homepage-store-categories")
       .on(
@@ -301,16 +271,11 @@ export default function Home() {
           schema: "public",
           table: "store_categories",
         },
-        () => {
-          loadCategories();
-        },
+        loadCategories,
       )
       .subscribe();
 
-    // Refresh when the customer returns to the homepage tab.
-    const handleFocus = () => {
-      loadCategories();
-    };
+    const handleFocus = () => loadCategories();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -329,7 +294,7 @@ export default function Home() {
     };
   }, []);
 
-  // Load products.
+  // Load all products.
   useEffect(() => {
     let active = true;
 
@@ -368,7 +333,7 @@ export default function Home() {
     };
   }, []);
 
-  // Load the homepage offers configuration managed from the admin dashboard.
+  // Load existing Exciting Offers configuration.
   useEffect(() => {
     let active = true;
 
@@ -398,10 +363,14 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Error loading homepage offer settings:", error);
-        if (active)
+
+        if (active) {
           setOffersError("Offers are using the default homepage settings.");
+        }
       } finally {
-        if (active) setOffersLoading(false);
+        if (active) {
+          setOffersLoading(false);
+        }
       }
     }
 
@@ -411,7 +380,11 @@ export default function Home() {
       .channel("homepage-offer-settings")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "homepage_offer_settings" },
+        {
+          event: "*",
+          schema: "public",
+          table: "homepage_offer_settings",
+        },
         loadOfferSettings,
       )
       .subscribe();
@@ -426,11 +399,71 @@ export default function Home() {
     };
   }, []);
 
+  // Load new Extra Discount Offers configuration.
+  useEffect(() => {
+    let active = true;
+
+    async function loadDiscountSettings() {
+      try {
+        const { data, error } = await supabase
+          .from("homepage_discount_settings")
+          .select("title, subtitle, is_enabled, product_ids")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (active && data) {
+          setDiscountSettings({
+            title: data.title || "Extra Discount Offers",
+            subtitle: data.subtitle || "",
+            is_enabled: data.is_enabled !== false,
+            product_ids: Array.isArray(data.product_ids)
+              ? data.product_ids
+              : [],
+          });
+        }
+      } catch (error) {
+        console.error("Error loading extra discount offers:", error);
+      } finally {
+        if (active) {
+          setDiscountSettingsLoading(false);
+        }
+      }
+    }
+
+    loadDiscountSettings();
+
+    const channel = supabase
+      .channel("homepage-discount-settings")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "homepage_discount_settings",
+        },
+        loadDiscountSettings,
+      )
+      .subscribe();
+
+    const handleFocus = () => loadDiscountSettings();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Existing Exciting Offers products.
   const excitingOfferProducts = (() => {
     if (offerSettings.mode === "manual") {
       const productsById = new Map(
         products.map((product) => [String(product.id), product]),
       );
+
       return (offerSettings.product_ids || [])
         .map((id) => productsById.get(String(id)))
         .filter(Boolean)
@@ -443,121 +476,106 @@ export default function Home() {
         const original = Number(
           product.original_price ?? product.originalPrice ?? 0,
         );
+
         return original > price && original > 0;
       })
       .sort((a, b) => {
+        const originalA = Number(a.original_price ?? a.originalPrice ?? 0);
+        const originalB = Number(b.original_price ?? b.originalPrice ?? 0);
+
         const discountA =
-          (Number(a.original_price ?? a.originalPrice ?? 0) -
-            Number(a.price || 0)) /
-          Math.max(Number(a.original_price ?? a.originalPrice ?? 0), 1);
+          (originalA - Number(a.price || 0)) / Math.max(originalA, 1);
+
         const discountB =
-          (Number(b.original_price ?? b.originalPrice ?? 0) -
-            Number(b.price || 0)) /
-          Math.max(Number(b.original_price ?? b.originalPrice ?? 0), 1);
+          (originalB - Number(b.price || 0)) / Math.max(originalB, 1);
+
         return discountB - discountA;
       })
       .slice(0, 6);
   })();
 
-  const dailyProducts = products
-    .filter((product) =>
-      ["daily-puja", "daily-puja-essentials", "pooja-items", "pooja"].includes(
-        String(product.category_slug || product.categorySlug || "")
-          .toLowerCase()
-          .trim(),
-      ),
-    )
-    .slice(0, 6);
+  // New Extra Discount Offers products.
+  // Only products selected by the admin and genuinely discounted appear here.
+  const extraDiscountProducts = (() => {
+    const productsById = new Map(
+      products.map((product) => [String(product.id), product]),
+    );
 
-  const comboProducts = products
-    .filter((product) => {
-      const slug = String(
-        product.category_slug || product.categorySlug || "",
-      ).toLowerCase();
+    return discountSettings.product_ids
+      .map((id) => productsById.get(String(id)))
+      .filter((product) => {
+        if (!product) return false;
 
-      const category = String(product.category || "").toLowerCase();
+        const price = Number(product.price || 0);
+        const originalPrice = Number(
+          product.original_price ?? product.originalPrice ?? 0,
+        );
 
-      return (
-        slug.includes("combo") ||
-        slug.includes("kit") ||
-        category.includes("combo") ||
-        category.includes("kit")
-      );
-    })
-    .slice(0, 5);
-
-  const featuredProducts =
-    dailyProducts.length > 0 ? dailyProducts : products.slice(0, 6);
-
-  const festivalProducts =
-    comboProducts.length > 0 ? comboProducts : products.slice(0, 5);
+        return originalPrice > price && originalPrice > 0;
+      });
+  })();
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#fffaf3] text-[#332326]">
       <Header />
 
       <main className="pt-0">
-        {/* HERO BANNER */}
-        <section className="w-full">
-          <div className="purv-home-hero relative isolate min-h-[190px] overflow-hidden bg-[#f9e8bd] sm:min-h-[225px] lg:min-h-[260px]">
-            <img
-              src="https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=1800&q=85"
-              alt="Traditional puja essentials"
-              fetchPriority="high"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+        {/* DYNAMIC HERO BANNERS FROM ADMIN PANEL */}
+<HeroSlideshow />
 
-            <div className="absolute inset-0 bg-gradient-to-r from-[#fff6df]/95 via-[#ffe9b9]/75 to-[#e8b84f]/15" />
+        {/* EXTRA DISCOUNT OFFERS - ADMIN SELECTED */}
+        {discountSettings.is_enabled && (
+          <section className="mx-auto max-w-[1500px] px-4 py-2 sm:px-6 sm:py-3">
+            <div className="mb-2 flex items-center justify-center gap-3">
+              <span className="h-px flex-1 bg-[#d8b96f]" />
 
-            <div className="relative flex min-h-[190px] items-center px-5 py-5 sm:min-h-[255px] sm:px-10 lg:min-h-[260px] lg:px-16">
-              <div className="max-w-xl">
-                <p className="font-serif text-xs italic tracking-wider text-[#8c5634] sm:text-sm">
-                  || Om Shree Ganeshaya Namah ||
-                </p>
+              <LotusMark size={21} className="shrink-0" />
 
-                <div className="my-2 flex items-center gap-2 text-[#b07a28]">
-                  <span className="h-px w-8 bg-[#d5a94f]" />
-                  <LotusMark size={23} className="shrink-0" />
-                  <span className="h-px w-8 bg-[#d5a94f]" />
-                </div>
-
-                <h1 className="font-serif text-4xl font-bold leading-[1.08] tracking-tight text-[#671b2c] sm:text-5xl lg:text-7xl">
-                  PURV
-                  <span className="mt-1 block text-2xl tracking-[0.17em] sm:text-3xl">
-                    PUJA SAMAGRI
-                  </span>
-                </h1>
-
-                <h2 className="mt-4 font-serif text-lg font-semibold text-[#4b3028] sm:text-2xl">
-                  Everything You Need for Your Puja
+              <div className="text-center">
+                <h2 className="whitespace-nowrap font-serif text-xl font-bold text-[#701d30] sm:text-2xl lg:text-3xl">
+                  {discountSettings.title}
                 </h2>
 
-                <p className="mt-2 text-xs font-medium tracking-wide text-[#765342] sm:text-sm">
-                  Pure <span className="mx-2">•</span>
-                  Traditional <span className="mx-2">•</span>
-                  Trusted
+                <p className="mt-1 text-[10px] text-stone-500 sm:text-xs">
+                  {discountSettings.subtitle}
                 </p>
-
-                <Link
-                  to="/categories"
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#721d30] px-6 py-3 text-xs font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#4f1421] sm:text-sm"
-                >
-                  Shop Now <ArrowRight size={16} />
-                </Link>
               </div>
+
+              <LotusMark size={21} className="shrink-0" />
+
+              <span className="h-px flex-1 bg-[#d8b96f]" />
             </div>
 
-            <div className="absolute bottom-4 right-4 hidden max-w-[160px] text-right font-serif text-lg italic leading-7 text-[#6e3c32] lg:block">
-              Small Items...
-              <br />
-              Big Blessings...
-              <LotusMark className="ml-auto mt-2" size={28} />
-            </div>
-          </div>
-        </section>
+            {loading || discountSettingsLoading ? (
+              <div className="flex justify-center gap-5 overflow-hidden py-2">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="shrink-0 text-center">
+                    <div className="h-[100px] w-[100px] animate-pulse rounded-full bg-[#f0e5d8] sm:h-[125px] sm:w-[125px]" />
+                    <div className="mx-auto mt-2 h-3 w-16 animate-pulse rounded bg-[#f0e5d8]" />
+                  </div>
+                ))}
+              </div>
+            ) : extraDiscountProducts.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto px-1 pb-1 sm:justify-center sm:gap-6">
+                {extraDiscountProducts.map((product) => (
+                  <DiscountCircle key={product.id} product={product} />
+                ))}
+              </div>
+            ) : (
+              <div className="py-4 text-center">
+                <p className="font-serif text-base font-semibold text-[#701d30]">
+                  Special discounts are coming soon!
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Check back for handpicked offers on puja essentials.
+                </p>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* CATEGORY GRID - DYNAMIC FROM SUPABASE */}
-        <section className="mx-auto max-w-[1500px] px-4 py-3 sm:px-6 sm:py-4">
+       <section className="mx-auto w-full max-w-[1750px] px-3 py-2 sm:px-5 sm:py-3 lg:px-8">
           <div className="mb-3 flex items-center justify-center gap-3">
             <span className="h-px flex-1 bg-[#d8b96f]" />
             <LotusMark size={21} className="shrink-0" />
@@ -580,7 +598,7 @@ export default function Home() {
               ))}
             </div>
           ) : categories.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6 lg:gap-5">
               {categories.map((category) => (
                 <CategoryCard key={category.id} category={category} />
               ))}
@@ -598,9 +616,9 @@ export default function Home() {
           )}
         </section>
 
-        {/* EXCITING OFFERS - ADMIN CONFIGURABLE */}
+        {/* EXISTING EXCITING OFFERS - KEPT SEPARATE */}
         {offerSettings.is_enabled && (
-          <section className="mx-auto max-w-[1500px] px-4 pb-5 sm:px-6 sm:pb-6">
+          <section className="mx-auto w-full max-w-[1750px] px-3 pb-6 pt-4 sm:px-5 sm:pb-8 lg:px-8">
             <SectionTitle
               title={offerSettings.title || "Exciting Offers"}
               subtitle={offerSettings.subtitle}
@@ -608,7 +626,7 @@ export default function Home() {
             />
 
             {loading || offersLoading ? (
-             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={index}
@@ -637,16 +655,19 @@ export default function Home() {
             ) : (
               <div className="rounded-xl border border-dashed border-[#dfc7ac] bg-white p-8 text-center">
                 <LotusMark size={34} className="mx-auto" />
+
                 <h3 className="mt-3 font-serif text-lg font-bold text-[#701d30]">
                   {offerSettings.mode === "manual"
                     ? "Offers are being curated"
                     : "Exciting offers coming soon"}
                 </h3>
+
                 <p className="mt-1 text-sm text-stone-500">
                   {offerSettings.mode === "manual"
                     ? "The admin will select products for this collection."
                     : "Add discounted products with an original price to show them here."}
                 </p>
+
                 {(productError || offersError) && (
                   <p className="mt-2 text-xs text-red-600">
                     {productError || offersError}
@@ -681,7 +702,7 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              <LotusMark size={25} className="shrink-0" />
+              <LotusMark size={25} />
               <div>
                 <p className="text-xs font-bold text-[#4a2a2b]">
                   Pure & Authentic
@@ -764,13 +785,16 @@ export default function Home() {
 
             <div className="space-y-3 text-xs text-white/75">
               <p className="flex items-center gap-2">
-                <PackageCheck size={16} /> Carefully packed orders
+                <PackageCheck size={16} />
+                Carefully packed orders
               </p>
               <p className="flex items-center gap-2">
-                <ShieldCheck size={16} /> Secure shopping experience
+                <ShieldCheck size={16} />
+                Secure shopping experience
               </p>
               <p className="flex items-center gap-2">
-                <Sparkles size={16} /> Tradition in every detail
+                <Sparkles size={16} />
+                Tradition in every detail
               </p>
             </div>
           </div>
