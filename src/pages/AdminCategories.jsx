@@ -130,6 +130,20 @@ export default function AdminCategories() {
     loadCategories();
   }, [loadCategories]);
 
+  useEffect(() => {
+  if (categories.length === 0) return;
+
+  const allExpanded = {};
+
+  categories
+    .filter((item) => !item.parent_id)
+    .forEach((item) => {
+      allExpanded[item.id] = true;
+    });
+
+  setExpanded(allExpanded);
+}, [categories]);
+
   // --------------------------------------------------
   // CATEGORY DATA
   // --------------------------------------------------

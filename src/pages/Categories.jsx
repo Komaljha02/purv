@@ -1,30 +1,23 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Sparkles,
-  Grid2X2,
-  RefreshCw,
-  Flower2,
-} from "lucide-react";
+import { ArrowRight, Sparkles, Grid2X2, RefreshCw } from "lucide-react";
 
 import Header from "../components/Header";
 import { supabase } from "../lib/supabase";
+
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Always fetch the latest category order from Supabase.
+  // Fetch all active main categories and subcategories.
   const loadCategories = useCallback(async () => {
     setError("");
 
     const { data, error: fetchError } = await supabase
       .from("store_categories")
       .select("*")
-      .is("parent_id", null)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
@@ -36,7 +29,6 @@ export default function Categories() {
       return;
     }
 
-    // Keep the database order, with name as a fallback for equal sort_order.
     const sortedCategories = [...(data || [])].sort((a, b) => {
       const orderDifference =
         Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
@@ -45,6 +37,16 @@ export default function Categories() {
     });
 
     setCategories(sortedCategories);
+
+    console.log("TOTAL ROWS FROM SUPABASE:", sortedCategories.length);
+
+    console.table(
+      sortedCategories.map((item) => ({
+        name: item.name,
+        parent_id: item.parent_id,
+        is_active: item.is_active,
+      })),
+    );
     setLoading(false);
   }, []);
 
@@ -57,7 +59,6 @@ export default function Categories() {
       const { data, error: fetchError } = await supabase
         .from("store_categories")
         .select("*")
-        .is("parent_id", null)
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
@@ -76,6 +77,17 @@ export default function Categories() {
         });
 
         setCategories(sortedCategories);
+        console.log("TOTAL CATEGORIES:", sortedCategories.length);
+
+        console.table(
+          sortedCategories
+            .filter((item) => item.parent_id)
+            .map((item) => ({
+              name: item.name,
+              parent_id: item.parent_id,
+              active: item.is_active,
+            })),
+        );
       }
 
       setLoading(false);
@@ -83,7 +95,7 @@ export default function Categories() {
 
     fetchCategories();
 
-    // Refresh when admin changes category data in Supabase.
+    // Automatically refresh when admin updates categories.
     const channel = supabase
       .channel("customer-store-categories")
       .on(
@@ -95,11 +107,11 @@ export default function Categories() {
         },
         () => {
           if (isMounted) loadCategories();
-        }
+        },
       )
       .subscribe();
 
-    // Refresh when the customer returns to this browser tab.
+    // Refresh when customer returns to the browser tab.
     const handleFocus = () => {
       if (isMounted) loadCategories();
     };
@@ -115,15 +127,43 @@ export default function Categories() {
 
     return () => {
       isMounted = false;
+
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
       supabase.removeChannel(channel);
     };
   }, [loadCategories]);
 
+  // Separate main categories from their subcategories.
+  const mainCategories = categories.filter(
+  (category) => category.parent_id === null
+);
+
+const subcategoriesByParent = categories.reduce((groups, category) => {
+  if (category.parent_id !== null) {
+    const parentId = String(category.parent_id);
+
+    if (!groups[parentId]) {
+      groups[parentId] = [];
+    }
+
+    groups[parentId].push(category);
+  }
+
+  return groups;
+}, {});
+
+const getSubcategories = (parentId) => {
+  return (subcategoriesByParent[String(parentId)] || []).sort(
+    (a, b) => {
+      const orderDifference =
+        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
+
+      return orderDifference || a.name.localeCompare(b.name);
+    }
+  );
+};
   const getCategoryStyle = (name = "") => {
     const value = name.toLowerCase();
 
@@ -205,26 +245,27 @@ export default function Categories() {
               </div>
 
               <h1 className="font-serif text-3xl font-semibold text-[#421521] sm:text-4xl lg:text-5xl">
-                Shop by category<span className="text-[#ed9b28]">.</span>
+                Shop by category
+                <span className="text-[#ed9b28]">.</span>
               </h1>
 
-             <p className="mt-3 w-full text-sm leading-6 text-[#806e69] whitespace-normal lg:whitespace-nowrap">
-  Discover thoughtful essentials, festive favourites and beautiful little details for every occasion.
-</p>
+              <p className="mt-3 w-full text-sm leading-6 text-[#806e69] whitespace-normal lg:whitespace-nowrap">
+                Discover thoughtful essentials, festive favourites and beautiful
+                little details for every occasion.
+              </p>
             </div>
 
             {!loading && !error && (
               <div className="flex items-center gap-2 text-sm text-[#806e69]">
                 <Grid2X2 size={17} className="text-[#a56a50]" />
                 <span>
-                  {categories.length}{" "}
-                  {categories.length === 1 ? "category" : "categories"}
+                  {mainCategories.length}{" "}
+                  {mainCategories.length === 1 ? "category" : "categories"}
                 </span>
               </div>
             )}
           </div>
         </section>
-
 
         {/* Loading state */}
         {loading && (
@@ -248,6 +289,7 @@ export default function Categories() {
         {!loading && error && (
           <div className="rounded-2xl border border-[#f0d8d5] bg-white px-5 py-12 text-center">
             <p className="text-base font-semibold text-[#421521]">{error}</p>
+
             <button
               onClick={loadCategories}
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#421521]"
@@ -258,63 +300,89 @@ export default function Categories() {
           </div>
         )}
 
-        {/* Category grid */}
-        {!loading && !error && categories.length > 0 && (
+        {/* Main category cards with subcategory names */}
+        {!loading && !error && mainCategories.length > 0 && (
           <section>
-
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
-              {categories.map((category) => {
+              {mainCategories.map((category) => {
                 const style = getCategoryStyle(category.name);
-
+                const subcategories = getSubcategories(category.id);
+                console.log(
+                  "CATEGORY:",
+                  category.name,
+                  "SUBCATEGORIES:",
+                  subcategories.map((sub) => sub.name),
+                );
                 return (
-                  <Link
-                    key={category.id}
-                    to={`/category/${category.slug}`}
-                    className="group overflow-hidden rounded-2xl border border-[#f0e4df] bg-white shadow-[0_5px_20px_rgba(75,35,35,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#e8c8c1] hover:shadow-[0_14px_30px_rgba(75,35,35,0.10)]"
-                  >
-                    <div
-                      className={`relative aspect-[1.25/1] overflow-hidden bg-gradient-to-br ${style.background}`}
+                  <div key={category.id} className="min-w-0">
+                    {/* Existing main category card */}
+                    <Link
+                      to={`/category/${category.slug}`}
+                      className="group block overflow-hidden rounded-2xl border border-[#f0e4df] bg-white shadow-[0_5px_20px_rgba(75,35,35,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#e8c8c1] hover:shadow-[0_14px_30px_rgba(75,35,35,0.10)]"
                     >
-                      {category.image_url ? (
-                        <img
-                          src={category.image_url}
-                          alt={category.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/60 bg-white/40 text-4xl text-[#76233a] shadow-sm backdrop-blur-sm transition duration-300 group-hover:scale-110">
-                            {style.icon}
+                      <div
+                        className={`relative aspect-[1.25/1] overflow-hidden bg-gradient-to-br ${style.background}`}
+                      >
+                        {category.image_url ? (
+                          <img
+                            src={category.image_url}
+                            alt={category.name}
+                            loading="lazy"
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/60 bg-white/40 text-4xl text-[#76233a] shadow-sm backdrop-blur-sm transition duration-300 group-hover:scale-110">
+                              {style.icon}
+                            </div>
                           </div>
+                        )}
+
+                        <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition duration-300 group-hover:bg-[#76233a] group-hover:text-white">
+                          <ArrowRight size={17} />
                         </div>
-                      )}
-
-        
-
-                      <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition duration-300 group-hover:bg-[#76233a] group-hover:text-white">
-                        <ArrowRight size={17} />
                       </div>
-                    </div>
 
-                    <div className="p-4 sm:p-5">
-                      <h3 className="line-clamp-1 font-serif text-lg font-semibold text-[#421521] transition group-hover:text-[#9a4359] sm:text-xl">
-                        {category.name}
-                      </h3>
+                      <div className="p-4 sm:p-5">
+                        <h3 className="line-clamp-1 font-serif text-lg font-semibold text-[#421521] transition group-hover:text-[#9a4359] sm:text-xl">
+                          {category.name}
+                        </h3>
 
-                      <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#927b76] sm:text-sm">
-                        {category.description || style.subtitle}
-                      </p>
+                        <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#927b76] sm:text-sm">
+                          {category.description || style.subtitle}
+                        </p>
 
-                      <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[#a45d4c]">
-                        Explore collection
-                        <ArrowRight
-                          size={13}
-                          className="transition-transform group-hover:translate-x-1"
-                        />
+                        <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[#a45d4c]">
+                          Explore collection
+                          <ArrowRight
+                            size={13}
+                            className="transition-transform group-hover:translate-x-1"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+
+                    {/* Subcategory names */}
+                    {subcategories.length > 0 && (
+                      <div className="mt-2.5 rounded-xl border border-[#f0e4df] bg-white/80 px-3 py-3 shadow-[0_3px_12px_rgba(75,35,35,0.03)]">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a56a50]">
+                          Explore subcategories
+                        </p>
+
+                        <div className="flex flex-col gap-2">
+                          {subcategories.map((sub) => (
+                            <div
+                              key={sub.id}
+                              className="flex items-start gap-2 text-xs leading-5 text-[#806e69] transition hover:text-[#76233a] sm:text-sm"
+                            >
+                              <span className="mt-0.5 text-[#c18a65]">✦</span>
+                              <span>{sub.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -322,7 +390,7 @@ export default function Categories() {
         )}
 
         {/* Empty state */}
-        {!loading && !error && categories.length === 0 && (
+        {!loading && !error && mainCategories.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#e8d5ce] bg-white px-5 py-16 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f8e8e5] text-[#76233a]">
               <Grid2X2 size={27} />

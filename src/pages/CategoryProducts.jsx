@@ -284,8 +284,6 @@ export default function CategoryProducts() {
      LOAD CATEGORY AND SUBCATEGORIES
   ========================================= */
 
-
-
 const loadCategory = useCallback(async () => {
   if (!slug) {
     setCategory(null);
@@ -299,13 +297,8 @@ const loadCategory = useCallback(async () => {
   setCategoryError("");
 
   try {
-    // First check the existing local categories
-    let foundCategory = categories.find(
-      (item) => item.slug === slug
-    );
-
-    // Then check admin-created collections in Supabase
-    const { data, error } = await supabase
+    // Find the main category in Supabase
+    const { data: mainCategory, error: mainError } = await supabase
       .from("store_categories")
       .select("*")
       .eq("slug", slug)
@@ -313,28 +306,47 @@ const loadCategory = useCallback(async () => {
       .eq("is_active", true)
       .maybeSingle();
 
-    if (error) throw error;
+    if (mainError) throw mainError;
 
-    // Use the Supabase collection when available
-    if (data) {
-      foundCategory = data;
+    // Use the existing local category only as a fallback
+    const foundCategory =
+      mainCategory ||
+      categories.find((item) => item.slug === slug) ||
+      null;
+
+    if (!foundCategory) {
+      setCategory(null);
+      setSubcategories([]);
+      return;
     }
 
-    setCategory(foundCategory || null);
-    setSubcategories([]);
+    setCategory(foundCategory);
+
+    // Fetch active subcategories belonging to this main category
+    if (mainCategory?.id) {
+      const { data: childCategories, error: childError } = await supabase
+        .from("store_categories")
+        .select("*")
+        .eq("parent_id", mainCategory.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (childError) throw childError;
+
+      setSubcategories(childCategories || []);
+    } else {
+      setSubcategories([]);
+    }
   } catch (err) {
     console.error("Category loading error:", err);
-
     setCategory(null);
-    setCategoryError(
-      err.message || "Unable to load category."
-    );
+    setSubcategories([]);
+    setCategoryError(err.message || "Unable to load category.");
   } finally {
     setCategoryLoading(false);
   }
 }, [slug]);
-
-
 
 useEffect(() => {
   loadCategory();
@@ -356,12 +368,17 @@ useEffect(() => {
      1. Main category slug + subcategory_slug
      2. Subcategory slug in category_slug
   ========================================= */
+
+/* =========================================
+   LOAD PRODUCTS
+   Uses main category + subcategory_slug
+========================================= */
+
 const loadProducts = useCallback(async () => {
   if (!slug || categoryLoading) return;
 
   if (!category) {
     setProducts([]);
-    setSubcategories([]);
     setLoading(false);
     return;
   }
@@ -370,66 +387,58 @@ const loadProducts = useCallback(async () => {
   setError("");
 
   try {
-    // Supports the older daily-items slug too
-    const categoryAliases = {
-      "daily-puja": ["daily-puja", "daily-items"],
-    };
-
-    const matchingSlugs = categoryAliases[slug] || [slug];
-
     const { data, error: queryError } = await supabase
       .from("products")
       .select("*")
-      .in("category_slug", matchingSlugs)
       .order("created_at", { ascending: false });
 
     if (queryError) throw queryError;
 
-    const formattedProducts = (data || []).map((product) => ({
+    const categoryProducts = (data || []).filter((product) => {
+      const productMainCategory = String(
+        product.category || "",
+      ).trim().toLowerCase();
+
+      const currentMainCategory = String(
+        category.name || "",
+      ).trim().toLowerCase();
+
+      const productCategorySlug = product.category_slug || "";
+
+      const isMainCategoryMatch =
+        productMainCategory === currentMainCategory ||
+        productCategorySlug === slug;
+
+      const isSubcategoryMatch = subcategories.some(
+        (subcategory) =>
+          productCategorySlug === subcategory.slug ||
+          product.subcategory_slug === subcategory.slug,
+      );
+
+      return isMainCategoryMatch || isSubcategoryMatch;
+    });
+
+    const formattedProducts = categoryProducts.map((product) => ({
       ...product,
-      categorySlug: product.category_slug,
-      subcategorySlug: toSlug(product.category || ""),
+      categorySlug: product.category_slug || "",
+      subcategorySlug: product.subcategory_slug || "",
       originalPrice: product.original_price,
       image: product.image_url,
     }));
 
-    // Automatically create subcategories from Supabase products
-    const uniqueSubcategories = [
-      ...new Map(
-        formattedProducts
-          .filter((product) => product.category)
-          .map((product) => {
-            const name = product.category.trim();
-
-            return [
-              toSlug(name),
-              {
-                id: toSlug(name),
-                name,
-                slug: toSlug(name),
-              },
-            ];
-          })
-      ).values(),
-    ];
-
-    setSubcategories(uniqueSubcategories);
     setProducts(formattedProducts);
   } catch (err) {
     console.error("Product loading error:", err);
     setError(err.message || "Unable to load products.");
     setProducts([]);
-    setSubcategories([]);
   } finally {
     setLoading(false);
   }
-}, [slug, category, categoryLoading]);
+}, [slug, category, categoryLoading, subcategories]);
 
-// Automatically fetch products whenever the category is ready
 useEffect(() => {
   loadProducts();
 }, [loadProducts]);
-
 
   /* =========================================
      SEARCH, FILTER AND SORT
@@ -438,11 +447,14 @@ useEffect(() => {
   const visibleProducts = useMemo(() => {
     let result = [...products];
 
-    if (selectedSubcategory !== "all") {
-      result = result.filter((product) => {
-        return toSlug(product.category || "") === selectedSubcategory;
-      });
-    }
+   if (selectedSubcategory !== "all") {
+  result = result.filter((product) => {
+    return (
+      product.subcategory_slug === selectedSubcategory ||
+      product.category_slug === selectedSubcategory
+    );
+  });
+}
 
     if (search.trim()) {
       const query = search.toLowerCase().trim();

@@ -30,6 +30,7 @@ const emptyForm = {
   original_price: "",
   category: "",
   category_slug: "",
+  subcategory_slug: "",
   image_url: "",
   stock: "0",
 };
@@ -246,8 +247,9 @@ export default function AdminProducts() {
     (category) => category.slug === form.category_slug,
   );
 
-  const selectedMainCategoryId =
-    selectedCategoryRecord?.parent_id || selectedCategoryRecord?.id || "";
+  const selectedMainCategoryId = selectedCategoryRecord?.parent_id
+    ? selectedCategoryRecord.parent_id
+    : selectedCategoryRecord?.id || "";
 
   const mainCategoryOptions = storeCategories.filter(
     (category) =>
@@ -301,22 +303,38 @@ export default function AdminProducts() {
     clearMessages();
     setEditingId(product.id);
 
+    const matchedSubcategory = storeCategories.find(
+      (category) => category.slug === product.subcategory_slug,
+    );
+
     const matchedCategory =
       storeCategories.find(
         (category) => category.slug === product.category_slug,
       ) ||
-      storeCategories.find((category) => category.name === product.category);
+      storeCategories.find(
+        (category) => !category.parent_id && category.name === product.category,
+      );
+
+    const mainCategory = matchedSubcategory
+      ? storeCategories.find(
+          (category) => category.id === matchedSubcategory.parent_id,
+        )
+      : matchedCategory?.parent_id
+        ? storeCategories.find(
+            (category) => category.id === matchedCategory.parent_id,
+          )
+        : matchedCategory;
 
     setForm({
       name: product.name || "",
       description: product.description || "",
       price: product.price ?? "",
       original_price: product.original_price ?? "",
-      category: matchedCategory?.name || product.category || "",
-      category_slug:
-        matchedCategory?.slug ||
-        product.category_slug ||
-        createCategorySlug(product.category || ""),
+      category: mainCategory?.name || product.category || "",
+      category_slug: mainCategory?.slug || product.category_slug || "",
+      subcategory_slug:
+        product.subcategory_slug ||
+        (matchedCategory?.parent_id ? matchedCategory.slug : ""),
       image_url: product.image_url || "",
       stock: product.stock ?? 0,
     });
@@ -328,8 +346,8 @@ export default function AdminProducts() {
         preview: url,
       })),
     );
-    setShowForm(true);
 
+    setShowForm(true);
     loadStoreCategories();
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -340,7 +358,9 @@ export default function AdminProducts() {
 
     setForm((previous) => ({
       ...previous,
-      [name]: value,
+      category: selected?.name || "",
+      category_slug: selected?.slug || "",
+      subcategory_slug: "",
     }));
   }
 
@@ -518,6 +538,7 @@ export default function AdminProducts() {
         original_price: originalPrice,
         category,
         category_slug: categorySlug,
+        subcategory_slug: form.subcategory_slug || null,
         image_url: imageUrl,
         images: finalImages,
         stock,
@@ -1021,8 +1042,9 @@ export default function AdminProducts() {
 
                       setForm((previous) => ({
                         ...previous,
-                        category: selected?.name || parent?.name || "",
-                        category_slug: selected?.slug || parent?.slug || "",
+                        category: parent?.name || "",
+                        category_slug: parent?.slug || "",
+                        subcategory_slug: selected?.slug || "",
                       }));
                     }}
                     disabled={!selectedMainCategoryId || categoriesLoading}
