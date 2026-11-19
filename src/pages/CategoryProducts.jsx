@@ -31,7 +31,7 @@ import { supabase } from "../lib/supabase";
 import ProductCard from "../components/ProductCard";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-
+import { categories } from "../data/categories";
 /* =========================================
    HELPERS
 ========================================= */
@@ -259,6 +259,7 @@ function ProductSkeleton() {
   );
 }
 
+
 /* =========================================
    CATEGORY PRODUCTS PAGE
 ========================================= */
@@ -283,84 +284,61 @@ export default function CategoryProducts() {
      LOAD CATEGORY AND SUBCATEGORIES
   ========================================= */
 
-  const loadCategory = useCallback(async () => {
-    if (!slug) {
-      setCategory(null);
-      setSubcategories([]);
-      setCategoryLoading(false);
-      return;
-    }
 
-    setCategoryLoading(true);
+
+const loadCategory = useCallback(async () => {
+  if (!slug) {
+    setCategory(null);
+    setSubcategories([]);
     setCategoryError("");
+    setCategoryLoading(false);
+    return;
+  }
 
-    try {
-      const { data: categoryData, error: categoryQueryError } = await supabase
-        .from("store_categories")
-        .select("*")
-        .eq("slug", slug)
-        .is("parent_id", null)
-        .eq("is_active", true)
-        .maybeSingle();
+  setCategoryLoading(true);
+  setCategoryError("");
 
-      if (categoryQueryError) throw categoryQueryError;
+  try {
+    // First check the existing local categories
+    let foundCategory = categories.find(
+      (item) => item.slug === slug
+    );
 
-      if (!categoryData) {
-        setCategory(null);
-        setSubcategories([]);
-        return;
-      }
+    // Then check admin-created collections in Supabase
+    const { data, error } = await supabase
+      .from("store_categories")
+      .select("*")
+      .eq("slug", slug)
+      .is("parent_id", null)
+      .eq("is_active", true)
+      .maybeSingle();
 
-      const { data: subcategoryData, error: subcategoryQueryError } =
-        await supabase
-          .from("store_categories")
-          .select("*")
-          .eq("parent_id", categoryData.id)
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
+    if (error) throw error;
 
-      if (subcategoryQueryError) throw subcategoryQueryError;
-
-      setCategory(categoryData);
-      setSubcategories(subcategoryData || []);
-    } catch (err) {
-      console.error("Category loading error:", err);
-      setCategory(null);
-      setSubcategories([]);
-      setCategoryError(err.message || "Unable to load this category.");
-    } finally {
-      setCategoryLoading(false);
+    // Use the Supabase collection when available
+    if (data) {
+      foundCategory = data;
     }
-  }, [slug]);
 
-  useEffect(() => {
-    let active = true;
+    setCategory(foundCategory || null);
+    setSubcategories([]);
+  } catch (err) {
+    console.error("Category loading error:", err);
 
-    const run = async () => {
-      if (!active) return;
-      await loadCategory();
-    };
+    setCategory(null);
+    setCategoryError(
+      err.message || "Unable to load category."
+    );
+  } finally {
+    setCategoryLoading(false);
+  }
+}, [slug]);
 
-    run();
 
-    const channel = supabase
-      .channel(`customer-category-${slug || "none"}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "store_categories",
-        },
-        run
-      )
-      .subscribe();
 
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
-  }, [slug, loadCategory]);
+useEffect(() => {
+  loadCategory();
+}, [loadCategory]);
 
   /* =========================================
      RESET FILTERS WHEN CATEGORY CHANGES
@@ -378,89 +356,80 @@ export default function CategoryProducts() {
      1. Main category slug + subcategory_slug
      2. Subcategory slug in category_slug
   ========================================= */
+const loadProducts = useCallback(async () => {
+  if (!slug || categoryLoading) return;
 
-  const loadProducts = useCallback(async () => {
-    if (!slug || categoryLoading) return;
+  if (!category) {
+    setProducts([]);
+    setSubcategories([]);
+    setLoading(false);
+    return;
+  }
 
-    if (!category) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
+  setLoading(true);
+  setError("");
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const categorySlugs = [
-        slug,
-        ...subcategories.map((item) => item.slug),
-      ];
-
-      const uniqueSlugs = [...new Set(categorySlugs.filter(Boolean))];
-
-      const { data, error: queryError } = await supabase
-        .from("products")
-        .select("*")
-        .in("category_slug", uniqueSlugs)
-        .order("created_at", { ascending: false });
-
-      if (queryError) throw queryError;
-
-      const formattedProducts = (data || []).map((product) => {
-        const productCategorySlug = product.category_slug || "";
-
-        const derivedSubcategorySlug =
-          product.subcategory_slug ||
-          (productCategorySlug !== slug ? productCategorySlug : "") ||
-          toSlug(product.subcategory || "");
-
-        return {
-          ...product,
-          categorySlug: product.category_slug,
-          subcategorySlug: derivedSubcategorySlug,
-          originalPrice: product.original_price,
-          image: product.image_url,
-        };
-      });
-
-      setProducts(formattedProducts);
-    } catch (err) {
-      console.error("Product loading error:", err);
-      setError(err.message || "Unable to load products.");
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [slug, category, categoryLoading, subcategories]);
-
-  useEffect(() => {
-    let active = true;
-
-    const run = async () => {
-      if (active) await loadProducts();
+  try {
+    // Supports the older daily-items slug too
+    const categoryAliases = {
+      "daily-puja": ["daily-puja", "daily-items"],
     };
 
-    run();
+    const matchingSlugs = categoryAliases[slug] || [slug];
 
-    const channel = supabase
-      .channel(`customer-products-${slug || "none"}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "products",
-        },
-        run
-      )
-      .subscribe();
+    const { data, error: queryError } = await supabase
+      .from("products")
+      .select("*")
+      .in("category_slug", matchingSlugs)
+      .order("created_at", { ascending: false });
 
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
-  }, [slug, loadProducts]);
+    if (queryError) throw queryError;
+
+    const formattedProducts = (data || []).map((product) => ({
+      ...product,
+      categorySlug: product.category_slug,
+      subcategorySlug: toSlug(product.category || ""),
+      originalPrice: product.original_price,
+      image: product.image_url,
+    }));
+
+    // Automatically create subcategories from Supabase products
+    const uniqueSubcategories = [
+      ...new Map(
+        formattedProducts
+          .filter((product) => product.category)
+          .map((product) => {
+            const name = product.category.trim();
+
+            return [
+              toSlug(name),
+              {
+                id: toSlug(name),
+                name,
+                slug: toSlug(name),
+              },
+            ];
+          })
+      ).values(),
+    ];
+
+    setSubcategories(uniqueSubcategories);
+    setProducts(formattedProducts);
+  } catch (err) {
+    console.error("Product loading error:", err);
+    setError(err.message || "Unable to load products.");
+    setProducts([]);
+    setSubcategories([]);
+  } finally {
+    setLoading(false);
+  }
+}, [slug, category, categoryLoading]);
+
+// Automatically fetch products whenever the category is ready
+useEffect(() => {
+  loadProducts();
+}, [loadProducts]);
+
 
   /* =========================================
      SEARCH, FILTER AND SORT
@@ -471,7 +440,7 @@ export default function CategoryProducts() {
 
     if (selectedSubcategory !== "all") {
       result = result.filter((product) => {
-        return product.subcategorySlug === selectedSubcategory;
+        return toSlug(product.category || "") === selectedSubcategory;
       });
     }
 

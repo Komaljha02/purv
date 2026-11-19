@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { useShop } from "../context/ShopContext";
-
+import { useAuth } from "../context/AuthContext";
 const navItems = [
   { label: "Daily Puja", slug: "daily-puja", icon: Flame },
   {
@@ -85,6 +85,12 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartCount } = useShop();
+  const { user, loading: authLoading } = useAuth();
+
+  const customerName =
+    user?.user_metadata?.full_name?.trim().split(/\s+/)[0] ||
+    user?.email?.split("@")[0] ||
+    "";
 
   // Close the drawer whenever the customer changes pages.
   useEffect(() => {
@@ -184,12 +190,12 @@ export default function Header() {
 
             {/* TAGLINE */}
             <div className="hidden h-12 shrink-0 items-center border-l border-[#d4ad5e] pl-4 lg:flex">
-  <p className="font-serif text-[12px] font-semibold italic leading-5 text-[#76233a]">
-     || Bhakti Ka Har Pal  ||
-    <br />
-    || Purv Ke Sang  ||
-  </p>
-</div>
+              <p className="font-serif text-[12px] font-semibold italic leading-5 text-[#76233a]">
+                || Bhakti Ka Har Pal ||
+                <br />
+                || Purv Ke Sang ||
+              </p>
+            </div>
 
             {/* SEARCH */}
             <form
@@ -217,12 +223,17 @@ export default function Header() {
 
             {/* PROFILE - DESKTOP */}
             <Link
-              to="/profile"
+              to={user ? "/profile" : "/login"}
               className="hidden shrink-0 flex-col items-center gap-1 px-1 text-[#a77a32] transition hover:text-[#76233a] sm:flex"
             >
               <UserRound size={22} strokeWidth={1.7} />
-              <span className="whitespace-nowrap text-[9px] font-medium text-[#624438] sm:text-[10px]">
-                Login / Sign Up
+
+              <span className="max-w-[110px] truncate whitespace-nowrap text-[9px] font-medium text-[#624438] sm:text-[10px]">
+                {authLoading
+                  ? "My Account"
+                  : user
+                    ? `Hello, ${customerName}`
+                    : "Login / Sign Up"}
               </span>
             </Link>
 
@@ -354,7 +365,6 @@ export default function Header() {
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-
           {/* DRAWER CONTENT */}
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-5 pt-5">
             {/* QUICK ACCESS */}
@@ -374,11 +384,32 @@ export default function Header() {
               <div className="grid grid-cols-2 gap-2.5">
                 {quickLinks.map((item, index) => {
                   const Icon = item.icon;
+                  const isProfileLink = item.path === "/profile";
+
+                  const quickLinkPath = isProfileLink
+                    ? user
+                      ? "/profile"
+                      : "/login"
+                    : item.path;
+
+                  const quickLinkLabel = isProfileLink
+                    ? authLoading
+                      ? "My Account"
+                      : user
+                        ? `Hello, ${customerName}`
+                        : "Login / Sign Up"
+                    : item.label;
+
+                  const quickLinkSubtitle = isProfileLink
+                    ? user
+                      ? "Your account"
+                      : "Sign in to your account"
+                    : item.subtitle;
 
                   return (
                     <Link
                       key={item.path}
-                      to={item.path}
+                      to={quickLinkPath}
                       onClick={() => setMenuOpen(false)}
                       className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[#efdfcc] bg-white p-3 shadow-[0_2px_8px_rgba(91,45,35,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d8b77b] hover:shadow-md"
                     >
@@ -398,10 +429,10 @@ export default function Header() {
 
                       <span className="min-w-0">
                         <span className="block truncate text-xs font-bold text-[#421521]">
-                          {item.label}
+                          {quickLinkLabel}
                         </span>
                         <span className="mt-1 block truncate text-[9px] text-[#99857b]">
-                          {item.subtitle}
+                          {quickLinkSubtitle}
                         </span>
                       </span>
                     </Link>
@@ -409,7 +440,6 @@ export default function Header() {
                 })}
               </div>
             </section>
-
             {/* SHOP BY CATEGORY */}
             <section>
               <div className="mb-3 flex items-end justify-between">

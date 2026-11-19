@@ -28,6 +28,7 @@ import AdminDiscountOffers from "./pages/AdminDiscountOffers";
 import CompletedOrders from "./pages/CompletedOrders";
 import CancelledOrders from "./pages/CancelledOrders";
 import AdminBanners from "./pages/AdminBanners";
+import Login from "./pages/Login";
 function ComingSoon({ title }) {
   return (
     <main className="mx-auto max-w-5xl px-5 py-20 text-center">
@@ -76,6 +77,7 @@ export default function App() {
       <ScrollToTop />
 
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<Home />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/category/:slug" element={<CategoryProducts />} />
