@@ -1,16 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   ShoppingCart,
   UserRound,
   Menu,
-  X,
   Headset,
   Home as HomeIcon,
-  Flame,
-  Flower2,
-  Sparkles,
   Heart,
   PackageCheck,
   MapPin,
@@ -18,27 +14,12 @@ import {
   ChevronRight,
   MessageCircle,
   ArrowUpRight,
-  Gift,
+  Sparkles,
 } from "lucide-react";
 
+import { supabase } from "../lib/supabase";
 import { useShop } from "../context/ShopContext";
 import { useAuth } from "../context/AuthContext";
-const navItems = [
-  { label: "Daily Puja", slug: "daily-puja", icon: Flame },
-  {
-    label: "Puja Thali & Accessories",
-    slug: "puja-thali-accessories",
-    icon: Sparkles,
-  },
-  {
-    label: "Bhagwan Shringar",
-    slug: "bhagwan-shringar",
-    icon: Flower2,
-  },
-  { label: "Festival Kits", slug: "festival-kits", icon: Flame },
-  { label: "Havan Samagri", slug: "havan-samagri", icon: Sparkles },
-  { label: "Combos", slug: "combos-kits", icon: Gift },
-];
 
 const quickLinks = [
   {
@@ -79,13 +60,66 @@ const categoryBackgrounds = [
 export default function Header() {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const categoryScrollRef = useRef(null);
+  const [navCategories, setNavCategories] = useState([]);
 
   const navigate = useNavigate();
   const location = useLocation();
+
   const { cartCount } = useShop();
   const { user, loading: authLoading } = useAuth();
+
+  // Load the same active main categories used on the homepage.
+  useEffect(() => {
+    let active = true;
+
+    async function loadNavCategories() {
+      try {
+        const { data, error } = await supabase
+          .from("store_categories")
+          .select("id, name, slug, sort_order")
+          .is("parent_id", null)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+
+        if (error) throw error;
+
+        if (active) {
+          setNavCategories(data || []);
+        }
+      } catch (error) {
+        console.error("Header category loading error:", error);
+      }
+    }
+
+    loadNavCategories();
+
+    const channel = supabase
+      .channel("header-store-categories")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "store_categories",
+        },
+        () => {
+          loadNavCategories();
+        },
+      )
+      .subscribe();
+
+    const handleFocus = () => {
+      loadNavCategories();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const customerName =
     user?.user_metadata?.full_name?.trim().split(/\s+/)[0] ||
@@ -122,12 +156,6 @@ export default function Header() {
       ? location.pathname === "/"
       : location.pathname.startsWith(path);
 
-  const scrollCategories = () => {
-    categoryScrollRef.current?.scrollBy({
-      left: 220,
-      behavior: "smooth",
-    });
-  };
 
   return (
     <>
@@ -263,8 +291,7 @@ export default function Header() {
         >
           <div className="relative mx-auto max-w-[1500px]">
             <div
-              ref={categoryScrollRef}
-              className="flex items-center gap-7 overflow-x-auto scroll-smooth px-4 py-3 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-9 sm:px-6 md:w-full md:gap-6 md:px-5 md:pr-5 lg:gap-9"
+              className="flex items-center gap-7 overflow-x-auto scroll-smooth px-4 py-3 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-9 sm:px-6 md:w-full md:gap-6 md:px-5 md:pr-5 lg:gap-9"
             >
               {/* HOME */}
               <Link
@@ -282,30 +309,22 @@ export default function Header() {
                 )}
               </Link>
 
-              {/* CATEGORY LINKS */}
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = location.pathname === `/category/${item.slug}`;
+              {/* VIEW ALL CATEGORIES */}
+              <Link
+                to="/categories"
+                className={`relative flex shrink-0 flex-col items-center gap-1.5 px-3 pb-1 text-[11px] font-bold transition ${
+                  isActive("/categories")
+                    ? "text-[#f5d68e]"
+                    : "text-white hover:text-[#f5d68e]"
+                }`}
+              >
+                <Grid2X2 size={20} strokeWidth={1.8} />
+                <span className="whitespace-nowrap">View All Categories</span>
 
-                return (
-                  <Link
-                    key={item.slug}
-                    to={`/category/${item.slug}`}
-                    className={`relative flex shrink-0 flex-col items-center gap-1.5 px-1 pb-1 text-[11px] font-bold text-white transition ${
-                      active
-                        ? "text-white"
-                        : "text-white/90 hover:text-[#f5d68e]"
-                    }`}
-                  >
-                    <Icon size={20} strokeWidth={1.8} />
-                    <span className="whitespace-nowrap">{item.label}</span>
-
-                    {active && (
-                      <span className="absolute -bottom-3 left-0 h-[3px] w-full rounded-full bg-white" />
-                    )}
-                  </Link>
-                );
-              })}
+                {isActive("/categories") && (
+                  <span className="absolute -bottom-3 left-0 h-[3px] w-full rounded-full bg-white" />
+                )}
+              </Link>
 
               {/* CONTACT */}
               <Link
@@ -323,16 +342,6 @@ export default function Header() {
                 )}
               </Link>
             </div>
-
-            {/* SCROLL RIGHT BUTTON */}
-            <button
-              type="button"
-              aria-label="Scroll categories right"
-              onClick={scrollCategories}
-              className="absolute right-1 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-[#eadcc7] bg-white text-[#76233a] shadow-md transition hover:bg-[#fff0e4] md:hidden"
-            >
-              <ChevronRight size={19} />
-            </button>
           </div>
         </nav>
       </header>
@@ -440,6 +449,7 @@ export default function Header() {
                 })}
               </div>
             </section>
+
             {/* SHOP BY CATEGORY */}
             <section>
               <div className="mb-3 flex items-end justify-between">
@@ -463,13 +473,15 @@ export default function Header() {
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {navItems.map((item, index) => {
-                  const Icon = item.icon;
+                {navCategories.map((item, index) => {
                   const active = location.pathname === `/category/${item.slug}`;
+
+                  const background =
+                    categoryBackgrounds[index % categoryBackgrounds.length];
 
                   return (
                     <Link
-                      key={item.slug}
+                      key={item.id}
                       to={`/category/${item.slug}`}
                       onClick={() => setMenuOpen(false)}
                       className={`group relative flex min-h-[83px] items-center gap-2.5 overflow-hidden rounded-2xl border p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
@@ -479,14 +491,14 @@ export default function Header() {
                       }`}
                     >
                       <span
-                        className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br ${categoryBackgrounds[index]} text-[#76233a]`}
+                        className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br ${background} text-[#76233a]`}
                       >
-                        <Icon size={21} strokeWidth={1.8} />
+                        <Grid2X2 size={21} strokeWidth={1.8} />
                       </span>
 
                       <span className="min-w-0 flex-1">
                         <span className="block text-[11px] font-bold leading-4 text-[#54202b]">
-                          {item.label}
+                          {item.name}
                         </span>
                         <span className="mt-1 flex items-center gap-1 text-[9px] font-medium text-[#a77a32]">
                           Explore

@@ -5,13 +5,12 @@ import { ArrowRight, Sparkles, Grid2X2, RefreshCw } from "lucide-react";
 import Header from "../components/Header";
 import { supabase } from "../lib/supabase";
 
-
 export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch all active main categories and subcategories.
+  // Load only active main categories
   const loadCategories = useCallback(async () => {
     setError("");
 
@@ -19,6 +18,7 @@ export default function Categories() {
       .from("store_categories")
       .select("*")
       .eq("is_active", true)
+      .is("parent_id", null)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
@@ -29,75 +29,25 @@ export default function Categories() {
       return;
     }
 
-    const sortedCategories = [...(data || [])].sort((a, b) => {
-      const orderDifference =
-        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
-
-      return orderDifference || a.name.localeCompare(b.name);
-    });
-
-    setCategories(sortedCategories);
-
-    console.log("TOTAL ROWS FROM SUPABASE:", sortedCategories.length);
-
-    console.table(
-      sortedCategories.map((item) => ({
-        name: item.name,
-        parent_id: item.parent_id,
-        is_active: item.is_active,
-      })),
-    );
+    setCategories(data || []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchCategories = async () => {
-      setError("");
-
-      const { data, error: fetchError } = await supabase
-        .from("store_categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true });
+    const fetchData = async () => {
+      setLoading(true);
+      await loadCategories();
 
       if (!isMounted) return;
-
-      if (fetchError) {
-        console.error("Category loading error:", fetchError);
-        setError("We couldn't load the categories. Please try again.");
-      } else {
-        const sortedCategories = [...(data || [])].sort((a, b) => {
-          const orderDifference =
-            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
-
-          return orderDifference || a.name.localeCompare(b.name);
-        });
-
-        setCategories(sortedCategories);
-        console.log("TOTAL CATEGORIES:", sortedCategories.length);
-
-        console.table(
-          sortedCategories
-            .filter((item) => item.parent_id)
-            .map((item) => ({
-              name: item.name,
-              parent_id: item.parent_id,
-              active: item.is_active,
-            })),
-        );
-      }
-
-      setLoading(false);
     };
 
-    fetchCategories();
+    fetchData();
 
-    // Automatically refresh when admin updates categories.
+    // Refresh when admin changes categories
     const channel = supabase
-      .channel("customer-store-categories")
+      .channel("customer-main-categories")
       .on(
         "postgres_changes",
         {
@@ -111,7 +61,7 @@ export default function Categories() {
       )
       .subscribe();
 
-    // Refresh when customer returns to the browser tab.
+    // Refresh when customer returns to the page
     const handleFocus = () => {
       if (isMounted) loadCategories();
     };
@@ -135,35 +85,7 @@ export default function Categories() {
     };
   }, [loadCategories]);
 
-  // Separate main categories from their subcategories.
-  const mainCategories = categories.filter(
-  (category) => category.parent_id === null
-);
-
-const subcategoriesByParent = categories.reduce((groups, category) => {
-  if (category.parent_id !== null) {
-    const parentId = String(category.parent_id);
-
-    if (!groups[parentId]) {
-      groups[parentId] = [];
-    }
-
-    groups[parentId].push(category);
-  }
-
-  return groups;
-}, {});
-
-const getSubcategories = (parentId) => {
-  return (subcategoriesByParent[String(parentId)] || []).sort(
-    (a, b) => {
-      const orderDifference =
-        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
-
-      return orderDifference || a.name.localeCompare(b.name);
-    }
-  );
-};
+  // Category card styling
   const getCategoryStyle = (name = "") => {
     const value = name.toLowerCase();
 
@@ -233,7 +155,9 @@ const getSubcategories = (parentId) => {
             <Link to="/" className="transition hover:text-[#76233a]">
               Home
             </Link>
+
             <span>/</span>
+
             <span className="font-medium text-[#76233a]">Categories</span>
           </div>
 
@@ -249,7 +173,7 @@ const getSubcategories = (parentId) => {
                 <span className="text-[#ed9b28]">.</span>
               </h1>
 
-              <p className="mt-3 w-full text-sm leading-6 text-[#806e69] whitespace-normal lg:whitespace-nowrap">
+              <p className="mt-3 w-full text-sm leading-6 text-[#806e69]">
                 Discover thoughtful essentials, festive favourites and beautiful
                 little details for every occasion.
               </p>
@@ -258,9 +182,10 @@ const getSubcategories = (parentId) => {
             {!loading && !error && (
               <div className="flex items-center gap-2 text-sm text-[#806e69]">
                 <Grid2X2 size={17} className="text-[#a56a50]" />
+
                 <span>
-                  {mainCategories.length}{" "}
-                  {mainCategories.length === 1 ? "category" : "categories"}
+                  {categories.length}{" "}
+                  {categories.length === 1 ? "category" : "categories"}
                 </span>
               </div>
             )}
@@ -269,13 +194,14 @@ const getSubcategories = (parentId) => {
 
         {/* Loading state */}
         {loading && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 10 }).map((_, index) => (
               <div
                 key={index}
                 className="animate-pulse overflow-hidden rounded-2xl border border-[#f0e4df] bg-white"
               >
                 <div className="aspect-[1.25/1] bg-[#f2e8e4]" />
+
                 <div className="space-y-2 p-4">
                   <div className="h-4 w-3/4 rounded bg-[#f2e8e4]" />
                   <div className="h-3 w-1/2 rounded bg-[#f2e8e4]" />
@@ -291,7 +217,10 @@ const getSubcategories = (parentId) => {
             <p className="text-base font-semibold text-[#421521]">{error}</p>
 
             <button
-              onClick={loadCategories}
+              onClick={() => {
+                setLoading(true);
+                loadCategories();
+              }}
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#421521]"
             >
               <RefreshCw size={15} />
@@ -300,89 +229,62 @@ const getSubcategories = (parentId) => {
           </div>
         )}
 
-        {/* Main category cards with subcategory names */}
-        {!loading && !error && mainCategories.length > 0 && (
+        {/* Main category cards only */}
+        {!loading && !error && categories.length > 0 && (
           <section>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
-              {mainCategories.map((category) => {
+              {categories.map((category) => {
                 const style = getCategoryStyle(category.name);
-                const subcategories = getSubcategories(category.id);
-                console.log(
-                  "CATEGORY:",
-                  category.name,
-                  "SUBCATEGORIES:",
-                  subcategories.map((sub) => sub.name),
-                );
+
                 return (
-                  <div key={category.id} className="min-w-0">
-                    {/* Existing main category card */}
-                    <Link
-                      to={`/category/${category.slug}`}
-                      className="group block overflow-hidden rounded-2xl border border-[#f0e4df] bg-white shadow-[0_5px_20px_rgba(75,35,35,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#e8c8c1] hover:shadow-[0_14px_30px_rgba(75,35,35,0.10)]"
+                  <Link
+                    key={category.id}
+                    to={`/category/${category.slug}`}
+                    className="group block min-w-0 overflow-hidden rounded-2xl border border-[#f0e4df] bg-white shadow-[0_5px_20px_rgba(75,35,35,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#e8c8c1] hover:shadow-[0_14px_30px_rgba(75,35,35,0.10)]"
+                  >
+                    {/* Category image */}
+                    <div
+                      className={`relative aspect-[1.25/1] overflow-hidden bg-gradient-to-br ${style.background}`}
                     >
-                      <div
-                        className={`relative aspect-[1.25/1] overflow-hidden bg-gradient-to-br ${style.background}`}
-                      >
-                        {category.image_url ? (
-                          <img
-                            src={category.image_url}
-                            alt={category.name}
-                            loading="lazy"
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/60 bg-white/40 text-4xl text-[#76233a] shadow-sm backdrop-blur-sm transition duration-300 group-hover:scale-110">
-                              {style.icon}
-                            </div>
+                      {category.image_url ? (
+                        <img
+                          src={category.image_url}
+                          alt={category.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/60 bg-white/40 text-4xl text-[#76233a] shadow-sm backdrop-blur-sm transition duration-300 group-hover:scale-110">
+                            {style.icon}
                           </div>
-                        )}
-
-                        <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition duration-300 group-hover:bg-[#76233a] group-hover:text-white">
-                          <ArrowRight size={17} />
                         </div>
+                      )}
+
+                      <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#76233a] shadow-md transition duration-300 group-hover:bg-[#76233a] group-hover:text-white">
+                        <ArrowRight size={17} />
                       </div>
+                    </div>
 
-                      <div className="p-4 sm:p-5">
-                        <h3 className="line-clamp-1 font-serif text-lg font-semibold text-[#421521] transition group-hover:text-[#9a4359] sm:text-xl">
-                          {category.name}
-                        </h3>
+                    {/* Category details */}
+                    <div className="p-4 sm:p-5 lg:p-6">
+                      <h3 className="line-clamp-2 sm:line-clamp-1 font-serif text-lg font-semibold text-[#421521] transition group-hover:text-[#9a4359] sm:text-xl">
+                        {category.name}
+                      </h3>
 
-                        <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#927b76] sm:text-sm">
-                          {category.description || style.subtitle}
-                        </p>
+                      <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#927b76] sm:text-sm">
+                        {category.description || style.subtitle}
+                      </p>
 
-                        <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[#a45d4c]">
-                          Explore collection
-                          <ArrowRight
-                            size={13}
-                            className="transition-transform group-hover:translate-x-1"
-                          />
-                        </div>
+                      <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[#a45d4c] sm:text-sm">
+                        Explore collection
+                        <ArrowRight
+                          size={14}
+                          className="transition-transform group-hover:translate-x-1"
+                        />
                       </div>
-                    </Link>
-
-                    {/* Subcategory names */}
-                    {subcategories.length > 0 && (
-                      <div className="mt-2.5 rounded-xl border border-[#f0e4df] bg-white/80 px-3 py-3 shadow-[0_3px_12px_rgba(75,35,35,0.03)]">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a56a50]">
-                          Explore subcategories
-                        </p>
-
-                        <div className="flex flex-col gap-2">
-                          {subcategories.map((sub) => (
-                            <div
-                              key={sub.id}
-                              className="flex items-start gap-2 text-xs leading-5 text-[#806e69] transition hover:text-[#76233a] sm:text-sm"
-                            >
-                              <span className="mt-0.5 text-[#c18a65]">✦</span>
-                              <span>{sub.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  </Link>
                 );
               })}
             </div>
@@ -390,7 +292,7 @@ const getSubcategories = (parentId) => {
         )}
 
         {/* Empty state */}
-        {!loading && !error && mainCategories.length === 0 && (
+        {!loading && !error && categories.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#e8d5ce] bg-white px-5 py-16 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f8e8e5] text-[#76233a]">
               <Grid2X2 size={27} />
@@ -405,7 +307,10 @@ const getSubcategories = (parentId) => {
             </p>
 
             <button
-              onClick={loadCategories}
+              onClick={() => {
+                setLoading(true);
+                loadCategories();
+              }}
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#76233a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#421521]"
             >
               <RefreshCw size={15} />

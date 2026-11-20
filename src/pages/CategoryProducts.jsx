@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -107,20 +106,21 @@ function CategoryNavigation({
       id: "all",
       name: `All ${category.name}`,
       slug: "all",
+      image_url: category.image_url,
     },
     ...subcategories.map((item) => ({
       id: item.id,
       name: item.name,
       slug: item.slug,
+      image_url: item.image_url,
     })),
   ];
 
   return (
     <>
       {/* Mobile subcategory navigation */}
-
-      <div className="w-[64px] shrink-0 sm:w-[76px] lg:hidden">
-        <div className="sticky top-24 flex max-h-[calc(100vh-120px)] flex-col gap-2 overflow-y-auto bg-[#fffaf5] pb-3">
+      <div className="w-[112px] shrink-0 sm:w-[130px] lg:hidden">
+        <div className="sticky top-24 flex max-h-[calc(100vh-120px)] flex-col gap-2 overflow-y-auto bg-white pb-3">
           {items.map((item) => {
             const Icon =
               item.slug === "all" ? Sparkles : getSubcategoryIcon(item.name);
@@ -133,21 +133,26 @@ function CategoryNavigation({
                 type="button"
                 onClick={() => onSelect(item.slug)}
                 aria-pressed={selected}
-                className={`flex min-h-[82px] w-full flex-col items-center justify-center gap-2 rounded-r-xl px-1.5 py-2 text-center transition ${
+                className={`flex min-h-[112px] w-full flex-col items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center transition-all duration-200 ${
                   selected
-                    ? "border-l-4 border-[#76233a] bg-[#f5e0e9] text-[#76233a]"
-                    : "border-l-4 border-transparent bg-transparent text-[#806f70] hover:bg-[#fff0e7]"
+                    ? "border-[#e7c77e] bg-[#fff5e2] text-[#76233a] shadow-sm"
+                    : "border-transparent bg-white text-[#75676a] hover:bg-[#fffaf3]"
                 }`}
               >
-                <span
-                  className={`grid h-10 w-10 place-items-center rounded-xl ${
-                    selected ? "bg-white" : "bg-[#f5eee7]"
-                  }`}
-                >
-                  <Icon size={22} />
-                </span>
+                <div className="flex h-[58px] w-[58px] items-center justify-center overflow-hidden rounded-xl border border-[#eadcc7] bg-white shadow-sm">
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      loading="lazy"
+                      className="h-full w-full object-contain p-1"
+                    />
+                  ) : (
+                    <Icon size={25} className="text-[#a77a32]" />
+                  )}
+                </div>
 
-                <span className="w-full text-[9px] font-semibold leading-3">
+                <span className="w-full text-[10px] font-semibold leading-4">
                   {item.name}
                 </span>
               </button>
@@ -157,7 +162,6 @@ function CategoryNavigation({
       </div>
 
       {/* Desktop sidebar */}
-
       <aside className="hidden w-[210px] shrink-0 lg:block xl:w-[230px]">
         <div className="sticky top-28 overflow-hidden rounded-2xl border border-[#eadcc7] bg-white shadow-sm">
           <div className="border-b border-[#eadcc7] bg-gradient-to-r from-[#fff4df] to-[#fffaf1] p-4">
@@ -183,7 +187,6 @@ function CategoryNavigation({
           <div className="max-h-[calc(100vh-250px)] space-y-1 overflow-y-auto p-2.5">
             {items.map((item) => {
               const selected = selectedSubcategory === item.slug;
-
               const Icon =
                 item.slug === "all" ? Sparkles : getSubcategoryIcon(item.name);
 
@@ -193,16 +196,24 @@ function CategoryNavigation({
                   type="button"
                   onClick={() => onSelect(item.slug)}
                   aria-pressed={selected}
-                  className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-3 text-left transition-all duration-200 ${
+                  className={`group flex w-full items-center gap-3 rounded-xl border px-2.5 py-2.5 text-left transition-all duration-200 ${
                     selected
-                      ? "border border-[#e7c77e] bg-[#fff3d8] font-bold text-[#76233a]"
-                      : "border border-transparent text-[#79665d] hover:border-[#f0e2ca] hover:bg-[#fffaf2] hover:text-[#76233a]"
+                      ? "border-[#e7c77e] bg-[#fff3d8] font-bold text-[#76233a]"
+                      : "border-transparent text-[#79665d] hover:border-[#f0e2ca] hover:bg-[#fffaf2]"
                   }`}
                 >
-                  <Icon
-                    size={15}
-                    className="shrink-0 text-[#a77a32] group-hover:text-[#76233a]"
-                  />
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#eadcc7] bg-white">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-full w-full object-contain p-1"
+                      />
+                    ) : (
+                      <Icon size={19} className="text-[#a77a32]" />
+                    )}
+                  </span>
 
                   <span className="min-w-0 flex-1 text-xs leading-snug">
                     {item.name}
@@ -223,7 +234,6 @@ function CategoryNavigation({
             <p className="text-xs font-bold text-[#76233a]">
               Made with devotion
             </p>
-
             <p className="mt-1 text-[10px] leading-4 text-[#987c6a]">
               Thoughtfully selected puja essentials from Purv.
             </p>
@@ -259,7 +269,6 @@ function ProductSkeleton() {
   );
 }
 
-
 /* =========================================
    CATEGORY PRODUCTS PAGE
 ========================================= */
@@ -284,73 +293,101 @@ export default function CategoryProducts() {
      LOAD CATEGORY AND SUBCATEGORIES
   ========================================= */
 
-const loadCategory = useCallback(async () => {
-  if (!slug) {
-    setCategory(null);
-    setSubcategories([]);
-    setCategoryError("");
-    setCategoryLoading(false);
-    return;
-  }
-
-  setCategoryLoading(true);
-  setCategoryError("");
-
-  try {
-    // Find the main category in Supabase
-    const { data: mainCategory, error: mainError } = await supabase
-      .from("store_categories")
-      .select("*")
-      .eq("slug", slug)
-      .is("parent_id", null)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (mainError) throw mainError;
-
-    // Use the existing local category only as a fallback
-    const foundCategory =
-      mainCategory ||
-      categories.find((item) => item.slug === slug) ||
-      null;
-
-    if (!foundCategory) {
+  const loadCategory = useCallback(async () => {
+    if (!slug) {
       setCategory(null);
       setSubcategories([]);
+      setCategoryError("");
+      setCategoryLoading(false);
       return;
     }
 
-    setCategory(foundCategory);
+    setCategoryLoading(true);
+    setCategoryError("");
 
-    // Fetch active subcategories belonging to this main category
-    if (mainCategory?.id) {
-      const { data: childCategories, error: childError } = await supabase
+    try {
+      // Find the main category in Supabase
+      const { data: mainCategory, error: mainError } = await supabase
         .from("store_categories")
         .select("*")
-        .eq("parent_id", mainCategory.id)
+        .eq("slug", slug)
+        .is("parent_id", null)
         .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true });
+        .maybeSingle();
 
-      if (childError) throw childError;
+      if (mainError) throw mainError;
 
-      setSubcategories(childCategories || []);
-    } else {
+      // Use the existing local category only as a fallback
+      const foundCategory =
+        mainCategory || categories.find((item) => item.slug === slug) || null;
+
+      if (!foundCategory) {
+        setCategory(null);
+        setSubcategories([]);
+        return;
+      }
+
+      setCategory(foundCategory);
+
+      // Fetch active subcategories belonging to this main category
+      if (mainCategory?.id) {
+        const { data: childCategories, error: childError } = await supabase
+          .from("store_categories")
+          .select("*")
+          .eq("parent_id", mainCategory.id)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true });
+
+        if (childError) throw childError;
+
+        // Load uploaded images for all subcategories
+        const subcategorySlugs = childCategories.map((item) => item.slug);
+
+        let slides = [];
+
+        if (subcategorySlugs.length > 0) {
+          const { data: slideData, error: slideError } = await supabase
+            .from("subcategory_slides")
+            .select("subcategory_slug, image_url, sort_order, is_active")
+            .in("subcategory_slug", subcategorySlugs)
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true });
+
+          if (slideError) throw slideError;
+
+          slides = slideData || [];
+        }
+
+        // Use the first active uploaded image as the subcategory thumbnail
+        const subcategoriesWithImages = childCategories.map((item) => {
+          const firstImage = slides.find(
+            (slide) => slide.subcategory_slug === item.slug,
+          );
+
+          return {
+            ...item,
+            image_url: firstImage?.image_url || item.image_url || null,
+          };
+        });
+
+        setSubcategories(subcategoriesWithImages);
+      } else {
+        setSubcategories([]);
+      }
+    } catch (err) {
+      console.error("Category loading error:", err);
+      setCategory(null);
       setSubcategories([]);
+      setCategoryError(err.message || "Unable to load category.");
+    } finally {
+      setCategoryLoading(false);
     }
-  } catch (err) {
-    console.error("Category loading error:", err);
-    setCategory(null);
-    setSubcategories([]);
-    setCategoryError(err.message || "Unable to load category.");
-  } finally {
-    setCategoryLoading(false);
-  }
-}, [slug]);
+  }, [slug]);
 
-useEffect(() => {
-  loadCategory();
-}, [loadCategory]);
+  useEffect(() => {
+    loadCategory();
+  }, [loadCategory]);
 
   /* =========================================
      RESET FILTERS WHEN CATEGORY CHANGES
@@ -369,76 +406,76 @@ useEffect(() => {
      2. Subcategory slug in category_slug
   ========================================= */
 
-/* =========================================
+  /* =========================================
    LOAD PRODUCTS
    Uses main category + subcategory_slug
 ========================================= */
 
-const loadProducts = useCallback(async () => {
-  if (!slug || categoryLoading) return;
+  const loadProducts = useCallback(async () => {
+    if (!slug || categoryLoading) return;
 
-  if (!category) {
-    setProducts([]);
-    setLoading(false);
-    return;
-  }
+    if (!category) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
 
-  setLoading(true);
-  setError("");
+    setLoading(true);
+    setError("");
 
-  try {
-    const { data, error: queryError } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error: queryError } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    if (queryError) throw queryError;
+      if (queryError) throw queryError;
 
-    const categoryProducts = (data || []).filter((product) => {
-      const productMainCategory = String(
-        product.category || "",
-      ).trim().toLowerCase();
+      const categoryProducts = (data || []).filter((product) => {
+        const productMainCategory = String(product.category || "")
+          .trim()
+          .toLowerCase();
 
-      const currentMainCategory = String(
-        category.name || "",
-      ).trim().toLowerCase();
+        const currentMainCategory = String(category.name || "")
+          .trim()
+          .toLowerCase();
 
-      const productCategorySlug = product.category_slug || "";
+        const productCategorySlug = product.category_slug || "";
 
-      const isMainCategoryMatch =
-        productMainCategory === currentMainCategory ||
-        productCategorySlug === slug;
+        const isMainCategoryMatch =
+          productMainCategory === currentMainCategory ||
+          productCategorySlug === slug;
 
-      const isSubcategoryMatch = subcategories.some(
-        (subcategory) =>
-          productCategorySlug === subcategory.slug ||
-          product.subcategory_slug === subcategory.slug,
-      );
+        const isSubcategoryMatch = subcategories.some(
+          (subcategory) =>
+            productCategorySlug === subcategory.slug ||
+            product.subcategory_slug === subcategory.slug,
+        );
 
-      return isMainCategoryMatch || isSubcategoryMatch;
-    });
+        return isMainCategoryMatch || isSubcategoryMatch;
+      });
 
-    const formattedProducts = categoryProducts.map((product) => ({
-      ...product,
-      categorySlug: product.category_slug || "",
-      subcategorySlug: product.subcategory_slug || "",
-      originalPrice: product.original_price,
-      image: product.image_url,
-    }));
+      const formattedProducts = categoryProducts.map((product) => ({
+        ...product,
+        categorySlug: product.category_slug || "",
+        subcategorySlug: product.subcategory_slug || "",
+        originalPrice: product.original_price,
+        image: product.image_url,
+      }));
 
-    setProducts(formattedProducts);
-  } catch (err) {
-    console.error("Product loading error:", err);
-    setError(err.message || "Unable to load products.");
-    setProducts([]);
-  } finally {
-    setLoading(false);
-  }
-}, [slug, category, categoryLoading, subcategories]);
+      setProducts(formattedProducts);
+    } catch (err) {
+      console.error("Product loading error:", err);
+      setError(err.message || "Unable to load products.");
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, category, categoryLoading, subcategories]);
 
-useEffect(() => {
-  loadProducts();
-}, [loadProducts]);
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   /* =========================================
      SEARCH, FILTER AND SORT
@@ -447,14 +484,14 @@ useEffect(() => {
   const visibleProducts = useMemo(() => {
     let result = [...products];
 
-   if (selectedSubcategory !== "all") {
-  result = result.filter((product) => {
-    return (
-      product.subcategory_slug === selectedSubcategory ||
-      product.category_slug === selectedSubcategory
-    );
-  });
-}
+    if (selectedSubcategory !== "all") {
+      result = result.filter((product) => {
+        return (
+          product.subcategory_slug === selectedSubcategory ||
+          product.category_slug === selectedSubcategory
+        );
+      });
+    }
 
     if (search.trim()) {
       const query = search.toLowerCase().trim();
@@ -467,7 +504,7 @@ useEffect(() => {
           product.subcategory,
         ]
           .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query))
+          .some((value) => String(value).toLowerCase().includes(query)),
       );
     }
 
@@ -481,7 +518,7 @@ useEffect(() => {
 
     if (sortBy === "newest") {
       result.sort(
-        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
       );
     }
 

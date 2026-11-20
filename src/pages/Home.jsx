@@ -69,7 +69,6 @@ function LotusMark({ className = "", size = 24 }) {
 
 const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
-
 function SectionTitle({ title, subtitle, link = "/categories" }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[#ead9bd] pb-3">
@@ -86,9 +85,7 @@ function SectionTitle({ title, subtitle, link = "/categories" }) {
         </h2>
 
         {subtitle && (
-          <p className="mt-1 text-xs text-stone-500 sm:text-sm">
-            {subtitle}
-          </p>
+          <p className="mt-1 text-xs text-stone-500 sm:text-sm">{subtitle}</p>
         )}
       </div>
 
@@ -103,7 +100,6 @@ function SectionTitle({ title, subtitle, link = "/categories" }) {
   );
 }
 
-
 function CategoryCard({ category }) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -112,7 +108,7 @@ function CategoryCard({ category }) {
 
   return (
     <Link to={`/category/${category.slug}`} className="group min-w-0">
-     <div className="relative aspect-[5/4] overflow-hidden rounded-xl border border-[#eee0d0] bg-[#f8ead9] sm:rounded-2xl">
+      <div className="relative aspect-[5/4] overflow-hidden rounded-xl border border-[#eee0d0] bg-[#f8ead9] sm:rounded-2xl">
         {image && !imageFailed ? (
           <img
             src={image}
@@ -137,13 +133,12 @@ function CategoryCard({ category }) {
         </span>
       </div>
 
-      <h3 className="mt-2 text-center text-[11px] font-bold leading-4 text-[#39252a] group-hover:text-[#8b2939] sm:text-sm">
+      <h3 className="mt-2 text-center text-[11px] font-bold leading-4 text-[#39252a] transition group-hover:text-[#8b2939] sm:text-sm lg:text-base lg:leading-5">
         {category.name}
       </h3>
     </Link>
   );
 }
-
 
 function DiscountCircle({ product }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -152,7 +147,7 @@ function DiscountCircle({ product }) {
 
   const price = Number(product.price || 0);
   const originalPrice = Number(
-    product.original_price ?? product.originalPrice ?? 0
+    product.original_price ?? product.originalPrice ?? 0,
   );
 
   const discount =
@@ -162,9 +157,7 @@ function DiscountCircle({ product }) {
 
   const image = product.image_url || product.image || product.imageUrl || "";
 
-  const cartItem = cart.find(
-    (item) => String(item.id) === String(product.id)
-  );
+  const cartItem = cart.find((item) => String(item.id) === String(product.id));
 
   const quantity = Number(cartItem?.quantity || 0);
 
@@ -173,8 +166,7 @@ function DiscountCircle({ product }) {
       ? null
       : Number(product.stock);
 
-  const isOutOfStock =
-    stock !== null && Number.isFinite(stock) && stock <= 0;
+  const isOutOfStock = stock !== null && Number.isFinite(stock) && stock <= 0;
 
   function increaseQuantity() {
     if (isOutOfStock) return;
@@ -198,17 +190,11 @@ function DiscountCircle({ product }) {
 
   return (
     <div className="group w-[105px] shrink-0 text-center sm:w-[130px]">
-
       {/* Circular Image with Floating Cart Control */}
       <div className="relative mx-auto h-[85px] w-[85px] sm:h-[100px] sm:w-[100px]">
-
         {/* Product Circle */}
         <div className="relative h-full w-full overflow-hidden rounded-full border-[3px] border-[#e5c783] bg-gradient-to-br from-[#fff7e7] to-[#f1dfbd] shadow-md transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
-
-          <Link
-            to={`/product/${product.id}`}
-            className="block h-full w-full"
-          >
+          <Link to={`/product/${product.id}`} className="block h-full w-full">
             {image && !imageFailed ? (
               <img
                 src={image}
@@ -239,12 +225,10 @@ function DiscountCircle({ product }) {
               </span>
             </div>
           )}
-
         </div>
 
         {/* Floating Plus / Quantity Button - OUTSIDE CIRCLE */}
         <div className="absolute -right-1 -top-1 z-10">
-
           {quantity === 0 ? (
             <button
               type="button"
@@ -257,7 +241,6 @@ function DiscountCircle({ product }) {
             </button>
           ) : (
             <div className="flex h-8 items-center overflow-hidden rounded-lg border-2 border-[#76233a] bg-white text-[#76233a] shadow-lg sm:h-9">
-
               <button
                 type="button"
                 onClick={decreaseQuantity}
@@ -640,7 +623,7 @@ export default function Home() {
 
       <main className="pt-0">
         {/* DYNAMIC HERO BANNERS FROM ADMIN PANEL */}
-<HeroSlideshow />
+        <HeroSlideshow />
 
         {/* EXTRA DISCOUNT OFFERS - ADMIN SELECTED */}
         {discountSettings.is_enabled && (
@@ -694,7 +677,7 @@ export default function Home() {
         )}
 
         {/* CATEGORY GRID - DYNAMIC FROM SUPABASE */}
-       <section className="mx-auto w-full max-w-[1750px] px-3 py-2 sm:px-5 sm:py-3 lg:px-8">
+        <section className="mx-auto w-full max-w-[1750px] px-3 py-2 sm:px-5 sm:py-3 lg:px-8">
           <div className="mb-3 flex items-center justify-center gap-3">
             <span className="h-px flex-1 bg-[#d8b96f]" />
             <LotusMark size={21} className="shrink-0" />
@@ -717,7 +700,7 @@ export default function Home() {
               ))}
             </div>
           ) : categories.length > 0 ? (
-           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6 lg:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6 lg:gap-5">
               {categories.map((category) => (
                 <CategoryCard key={category.id} category={category} />
               ))}

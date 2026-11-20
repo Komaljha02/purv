@@ -21,6 +21,7 @@ import {
   Wallet,
   ShoppingBag,
   Package,
+  Bell,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import AdminLayout from "../pages/AdminLayout";
@@ -480,7 +481,8 @@ export default function AdminOrders() {
   const [updatingId, setUpdatingId] = useState(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-
+  const [newOrderCount, setNewOrderCount] = useState(0);
+  const [latestNewOrder, setLatestNewOrder] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("newest");
@@ -543,6 +545,65 @@ export default function AdminOrders() {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  // Listen for new orders in real time
+  useEffect(() => {
+    let channel = null;
+    let cancelled = false;
+
+    async function subscribeToNewOrders() {
+      try {
+        const isAdmin = await verifyAdmin();
+
+        if (!isAdmin || cancelled) return;
+
+        channel = supabase
+          .channel("purv-admin-new-orders")
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "orders",
+            },
+            (payload) => {
+              const newOrder = payload.new;
+
+              if (!newOrder?.id) return;
+
+              setOrders((previous) => {
+                // Prevent duplicate entries
+                if (previous.some((order) => order.id === newOrder.id)) {
+                  return previous;
+                }
+
+                return [newOrder, ...previous];
+              });
+
+              setLatestNewOrder(newOrder);
+              setNewOrderCount((previous) => previous + 1);
+            },
+          )
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR") {
+              console.error("Could not connect to live order notifications.");
+            }
+          });
+      } catch (error) {
+        console.error("Realtime subscription failed:", error);
+      }
+    }
+
+    subscribeToNewOrders();
+
+    return () => {
+      cancelled = true;
+
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [verifyAdmin]);
 
   async function updateOrderStatus(order, newStatus) {
     if (!newStatus || newStatus === order.status) return;
@@ -766,6 +827,70 @@ export default function AdminOrders() {
         </div>
       )}
 
+      {/* Live new-order notification */}
+      {latestNewOrder && (
+        <section className="mb-6 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 bg-gradient-to-r from-[#fff8ed] to-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <Bell size={21} />
+
+                {newOrderCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                    {newOrderCount}
+                  </span>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="font-bold text-[#54251f]">New order received!</p>
+
+                <p className="mt-1 break-words text-sm text-gray-600">
+                  {getOrderNumber(latestNewOrder)} ·{" "}
+                  {getAddress(latestNewOrder).fullName || "Customer"} ·{" "}
+                  {money(latestNewOrder.total)}
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  {latestNewOrder.payment_method || "Payment unavailable"} ·{" "}
+                  {latestNewOrder.payment_status || "Pending"}
+                </p>
+
+                {newOrderCount > 1 && (
+                  <p className="mt-1 text-xs font-semibold text-amber-700">
+                    {newOrderCount} new orders received while you were here.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOrder(latestNewOrder);
+                  setNewOrderCount(0);
+                  setLatestNewOrder(null);
+                }}
+                className="rounded-xl bg-[#76233a] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#421521]"
+              >
+                View order
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNewOrderCount(0);
+                  setLatestNewOrder(null);
+                }}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       <section className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           title="Total orders"

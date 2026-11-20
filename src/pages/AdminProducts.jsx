@@ -354,15 +354,13 @@ export default function AdminProducts() {
   }
 
   function handleChange(event) {
-    const { name, value } = event.target;
+  const { name, value } = event.target;
 
-    setForm((previous) => ({
-      ...previous,
-      category: selected?.name || "",
-      category_slug: selected?.slug || "",
-      subcategory_slug: "",
-    }));
-  }
+  setForm((previous) => ({
+    ...previous,
+    [name]: value,
+  }));
+}
 
   // Select product image
   function handleImageSelect(event) {
